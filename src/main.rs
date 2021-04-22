@@ -108,7 +108,7 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
             &src_initramfs,
             &format!(
                 "{}{}initramfs-{}-{}.img",
-                esp, "/EFI/aosc", distro_name, kernel_flavor
+                esp, "/EFI/aosc/", distro_name, kernel_flavor
             ),
         )?;
     } else {
@@ -123,7 +123,7 @@ fn install_spec_kernel(esp: &str, n: u32) -> Result<()> {
     if n > 0 && n <= kernels.len() as u32 {
         install_kernel(&kernels[n as usize - 1], esp)?;
     } else {
-        return Err(anyhow!("Chosen kernel index out of bound"))
+        return Err(anyhow!("Chosen kernel index out of bound"));
     }
 
     Ok(())
@@ -162,16 +162,13 @@ fn main() -> Result<()> {
     match matches.subcommand_name() {
         Some("init") => init(&config.esp_mountpoint)?,
         Some("list") => disp_kernels()?,
-        Some(_) => {
-            if let Some(sub) = matches.subcommand_matches("install-kernel") {
-                match sub.value_of("number") {
-                    Some(n) => install_spec_kernel(&config.esp_mountpoint, n.parse::<u32>()?)?,
-                    None => install_newest_kernel(&config.esp_mountpoint)?,
-                };
-            } else {
-                install_newest_kernel(&config.esp_mountpoint)?;
-            }
-        }
+        Some(_) => match matches.subcommand_matches("install-kernel") {
+            Some(sub) => match sub.value_of("number") {
+                Some(n) => install_spec_kernel(&config.esp_mountpoint, n.parse::<u32>()?)?,
+                None => install_newest_kernel(&config.esp_mountpoint)?,
+            },
+            None => install_newest_kernel(&config.esp_mountpoint)?,
+        },
         None => install_newest_kernel(&config.esp_mountpoint)?,
     }
 
