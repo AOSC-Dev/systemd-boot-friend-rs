@@ -22,12 +22,16 @@ fn read_conf() -> Result<Config> {
 }
 
 fn init(esp: &str) -> Result<()> {
+    println!("Initializing systemd-boot ...");
     Command::new("bootctl")
         .arg("install")
         .arg("--esp=".to_owned() + esp)
         .stdout(Stdio::null())
         .spawn()?;
+
+    println!("Creating folder structure for friend ...");
     fs::create_dir_all(format!("{}{}", esp, "/EFI/aosc/"))?;
+
     install_newest_kernel(&esp)?;
 
     println!("Please make sure you have written the boot entry config for systemd-boot,");
@@ -39,6 +43,7 @@ fn init(esp: &str) -> Result<()> {
 fn ls_kernels() -> Result<Vec<String>> {
     let kernels = fs::read_dir("/usr/lib/modules")?;
     let mut kernels_ls = Vec::new();
+
     for kernel in kernels {
         kernels_ls.push(kernel.unwrap().file_name().into_string().unwrap());
     }
@@ -49,6 +54,7 @@ fn ls_kernels() -> Result<Vec<String>> {
 
 fn disp_kernels() -> Result<()> {
     let kernels = ls_kernels()?;
+
     for (i, k) in kernels.into_iter().enumerate() {
         println!("[{}] {}", i + 1, k);
     }
@@ -65,6 +71,7 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
         return Err(anyhow!("{}{} not found", esp, "/EFI/aosc"));
     }
 
+    println!("Installing {} to {}/EFI/aosc/ ...", kernel_name, esp);
     let splitted_kernel_name = kernel_name.split("-").collect::<Vec<_>>();
     if splitted_kernel_name.len() != 3 {
         return Err(anyhow!("Kernel name does not meet the standard"));
@@ -73,14 +80,17 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
     let distro_name = splitted_kernel_name[1];
     let kernel_flavor = splitted_kernel_name[2];
 
-    let src_vmlinuz = Path::new(&format!(
+    let vmlinuz_path = format!(
         "/boot/vmlinuz-{}-{}-{}",
         distro_name, kernel_flavor, kernel_ver
-    ));
-    let src_initramfs = Path::new(&format!(
+    );
+    let initramfs_path = format!(
         "/boot/initramfs-{}-{}-{}.img",
         kernel_ver, distro_name, kernel_flavor
-    ));
+    );
+    let src_vmlinuz = Path::new(&vmlinuz_path);
+    let src_initramfs = Path::new(&initramfs_path);
+
     if src_vmlinuz.exists() {
         fs::copy(
             &src_vmlinuz,
@@ -88,10 +98,11 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
                 "{}{}vmlinuz-{}-{}",
                 esp, "/EFI/aosc/", distro_name, kernel_flavor
             ),
-        );
+        )?;
     } else {
         return Err(anyhow!("Kernel file not found"));
     }
+
     if src_initramfs.exists() {
         fs::copy(
             &src_initramfs,
@@ -99,7 +110,7 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
                 "{}{}initramfs-{}-{}.img",
                 esp, "/EFI/aosc", distro_name, kernel_flavor
             ),
-        );
+        )?;
     } else {
         return Err(anyhow!("Initramfs not found"));
     }
@@ -108,6 +119,7 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
 }
 
 fn install_newest_kernel(esp: &str) -> Result<()> {
+    println!("Installing the newest kernel ...");
     let kernels = ls_kernels()?;
     install_kernel(&kernels[kernels.len() - 1], esp)?;
 
@@ -126,6 +138,7 @@ fn main() -> Result<()> {
         .subcommand(SubCommand::with_name("mkconf").about("Make systemd-boot config"))
         .subcommand(SubCommand::with_name("list").about("List available kernels"))
         .get_matches();
+
     match matches.subcommand_name() {
         Some("init") => init(&config.esp_mountpoint)?,
         Some("list") => disp_kernels()?,
