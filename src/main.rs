@@ -82,7 +82,7 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
 
     let vmlinuz_path = format!(
         "/boot/vmlinuz-{}-{}-{}",
-        distro_name, kernel_flavor, kernel_ver
+        kernel_ver, distro_name, kernel_flavor
     );
     let initramfs_path = format!(
         "/boot/initramfs-{}-{}-{}.img",
