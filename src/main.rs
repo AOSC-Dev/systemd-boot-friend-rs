@@ -8,6 +8,7 @@ use std::{
 };
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend-rs.conf";
+const INST_PATH: &str = "EFI/aosc/";
 
 #[derive(Deserialize)]
 struct Config {
@@ -30,7 +31,7 @@ fn init(esp: &str) -> Result<()> {
         .spawn()?;
 
     println!("Creating folder structure for friend ...");
-    fs::create_dir_all(format!("{}{}", esp, "/EFI/aosc/"))?;
+    fs::create_dir_all(Path::new(esp).join(INST_PATH))?;
 
     install_newest_kernel(&esp)?;
 
@@ -63,15 +64,15 @@ fn disp_kernels() -> Result<()> {
 }
 
 fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
-    if !Path::new(esp).join("EFI/aosc/").exists() {
-        println!("{}/EFI/aosc/ does not exist. Doing nothing.", esp);
+    if !Path::new(esp).join(INST_PATH).exists() {
+        println!("{}/{} does not exist. Doing nothing.", esp, INST_PATH);
         println!("If you wish to use systemd-boot, run systemd-boot-friend init.");
         println!("Or, if your ESP mountpoint is not at $ESP_MOUNTPOINT, please edit /etc/systemd-boot-friend.conf.");
 
-        return Err(anyhow!("{}{} not found", esp, "/EFI/aosc"));
+        return Err(anyhow!("{}/{} not found", esp, INST_PATH));
     }
 
-    println!("Installing {} to {}/EFI/aosc/ ...", kernel_name, esp);
+    println!("Installing {} to {}/{} ...", kernel_name, esp, INST_PATH);
     let splitted_kernel_name = kernel_name.split('-').collect::<Vec<_>>();
     if splitted_kernel_name.len() != 3 {
         return Err(anyhow!("Kernel name does not meet the standard"));
@@ -95,8 +96,8 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
         fs::copy(
             &src_vmlinuz,
             &format!(
-                "{}{}vmlinuz-{}-{}",
-                esp, "/EFI/aosc/", distro_name, kernel_flavor
+                "{}/{}vmlinuz-{}-{}",
+                esp, INST_PATH, distro_name, kernel_flavor
             ),
         )?;
     } else {
@@ -107,8 +108,8 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
         fs::copy(
             &src_initramfs,
             &format!(
-                "{}{}initramfs-{}-{}.img",
-                esp, "/EFI/aosc/", distro_name, kernel_flavor
+                "{}/{}initramfs-{}-{}.img",
+                esp, INST_PATH, distro_name, kernel_flavor
             ),
         )?;
     } else {
@@ -118,13 +119,12 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
     Ok(())
 }
 
-fn install_spec_kernel(esp: &str, n: u32) -> Result<()> {
+fn install_spec_kernel(esp: &str, n: usize) -> Result<()> {
     let kernels = ls_kernels()?;
-    if n > 0 && n <= kernels.len() as u32 {
-        install_kernel(&kernels[n as usize - 1], esp)?;
-    } else {
+    if n == 0 || n > kernels.len() {
         return Err(anyhow!("Chosen kernel index out of bound"));
     }
+    install_kernel(&kernels[n - 1], esp)?;
 
     Ok(())
 }
@@ -164,7 +164,7 @@ fn main() -> Result<()> {
         Some("list") => disp_kernels()?,
         Some(_) => match matches.subcommand_matches("install-kernel") {
             Some(sub) => match sub.value_of("number") {
-                Some(n) => install_spec_kernel(&config.esp_mountpoint, n.parse::<u32>()?)?,
+                Some(n) => install_spec_kernel(&config.esp_mountpoint, n.parse::<usize>()?)?,
                 None => install_newest_kernel(&config.esp_mountpoint)?,
             },
             None => install_newest_kernel(&config.esp_mountpoint)?,
