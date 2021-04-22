@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use clap::{crate_version, App, SubCommand};
+use clap::{crate_version, App, Arg, SubCommand};
 use serde::Deserialize;
 use std::{
     fs,
@@ -118,6 +118,17 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
     Ok(())
 }
 
+fn install_spec_kernel(esp: &str, n: u32) -> Result<()> {
+    let kernels = ls_kernels()?;
+    if n > 0 && n <= kernels.len() as u32 {
+        install_kernel(&kernels[n as usize - 1], esp)?;
+    } else {
+        return Err(anyhow!("Chosen kernel index out of bound"))
+    }
+
+    Ok(())
+}
+
 fn install_newest_kernel(esp: &str) -> Result<()> {
     println!("Installing the newest kernel ...");
     let kernels = ls_kernels()?;
@@ -137,12 +148,30 @@ fn main() -> Result<()> {
         )
         .subcommand(SubCommand::with_name("mkconf").about("Make systemd-boot config"))
         .subcommand(SubCommand::with_name("list").about("List available kernels"))
+        .subcommand(
+            SubCommand::with_name("install-kernel")
+                .about("Install specific version of kernel")
+                .arg(
+                    Arg::with_name("number")
+                        .help("Number of kernel in the list")
+                        .index(1),
+                ),
+        )
         .get_matches();
 
     match matches.subcommand_name() {
         Some("init") => init(&config.esp_mountpoint)?,
         Some("list") => disp_kernels()?,
-        Some(_) => install_newest_kernel(&config.esp_mountpoint)?,
+        Some(_) => {
+            if let Some(sub) = matches.subcommand_matches("install-kernel") {
+                match sub.value_of("number") {
+                    Some(n) => install_spec_kernel(&config.esp_mountpoint, n.parse::<u32>()?)?,
+                    None => install_newest_kernel(&config.esp_mountpoint)?,
+                };
+            } else {
+                install_newest_kernel(&config.esp_mountpoint)?;
+            }
+        }
         None => install_newest_kernel(&config.esp_mountpoint)?,
     }
 
