@@ -66,6 +66,9 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
     }
 
     let splitted_kernel_name = kernel_name.split("-").collect::<Vec<_>>();
+    if splitted_kernel_name.len() != 3 {
+        return Err(anyhow!("Kernel name does not meet the standard"));
+    }
     let kernel_ver = splitted_kernel_name[0];
     let distro_name = splitted_kernel_name[1];
     let kernel_flavor = splitted_kernel_name[2];
