@@ -89,6 +89,8 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
                 esp, "/EFI/aosc/", distro_name, kernel_flavor
             ),
         );
+    } else {
+        return Err(anyhow!("Kernel file not found"));
     }
     if src_initramfs.exists() {
         fs::copy(
@@ -96,8 +98,10 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
             &format!(
                 "{}{}initramfs-{}-{}.img",
                 esp, "/EFI/aosc", distro_name, kernel_flavor
-            )
+            ),
         );
+    } else {
+        return Err(anyhow!("Initramfs not found"));
     }
 
     Ok(())
