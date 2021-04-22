@@ -64,7 +64,7 @@ fn disp_kernels() -> Result<()> {
 
 fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
     if !Path::new(esp).join("EFI/aosc/").exists() {
-        println!("{}{} does not exist. Doing nothing.", esp, "/EFI/aosc/");
+        println!("{}/EFI/aosc/ does not exist. Doing nothing.", esp);
         println!("If you wish to use systemd-boot, run systemd-boot-friend init.");
         println!("Or, if your ESP mountpoint is not at $ESP_MOUNTPOINT, please edit /etc/systemd-boot-friend.conf.");
 
@@ -72,7 +72,7 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
     }
 
     println!("Installing {} to {}/EFI/aosc/ ...", kernel_name, esp);
-    let splitted_kernel_name = kernel_name.split("-").collect::<Vec<_>>();
+    let splitted_kernel_name = kernel_name.split('-').collect::<Vec<_>>();
     if splitted_kernel_name.len() != 3 {
         return Err(anyhow!("Kernel name does not meet the standard"));
     }
