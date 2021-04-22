@@ -8,7 +8,7 @@ use std::{
 };
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend-rs.conf";
-const INST_PATH: &str = "EFI/aosc/";
+const REL_INST_PATH: &str = "EFI/aosc/";
 
 #[derive(Deserialize)]
 struct Config {
@@ -22,18 +22,18 @@ fn read_conf() -> Result<Config> {
     Ok(config)
 }
 
-fn init(esp: &str) -> Result<()> {
+fn init(inst_path: &Path) -> Result<()> {
     println!("Initializing systemd-boot ...");
     Command::new("bootctl")
         .arg("install")
-        .arg("--esp=".to_owned() + esp)
+        .arg("--esp=".to_owned() + inst_path.to_str().unwrap_or_else(|| "/efi"))
         .stdout(Stdio::null())
         .spawn()?;
 
     println!("Creating folder structure for friend ...");
-    fs::create_dir_all(Path::new(esp).join(INST_PATH))?;
+    fs::create_dir_all(Path::new(inst_path).join(REL_INST_PATH))?;
 
-    install_newest_kernel(&esp)?;
+    install_newest_kernel(&inst_path)?;
 
     println!("Please make sure you have written the boot entry config for systemd-boot,");
     println!("see https://systemd.io/BOOT_LOADER_SPECIFICATION/ for further information.");
@@ -63,16 +63,16 @@ fn disp_kernels() -> Result<()> {
     Ok(())
 }
 
-fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
-    if !Path::new(esp).join(INST_PATH).exists() {
-        println!("{}/{} does not exist. Doing nothing.", esp, INST_PATH);
+fn install_kernel(kernel_name: &str, inst_path: &Path) -> Result<()> {
+    if !inst_path.exists() {
+        println!("{} does not exist. Doing nothing.", inst_path.display());
         println!("If you wish to use systemd-boot, run systemd-boot-friend init.");
-        println!("Or, if your ESP mountpoint is not at $ESP_MOUNTPOINT, please edit /etc/systemd-boot-friend.conf.");
+        println!("Or, if your ESP mountpoint is not at esp_mountpoint, please edit /etc/systemd-boot-friend-rs.conf.");
 
-        return Err(anyhow!("{}/{} not found", esp, INST_PATH));
+        return Err(anyhow!("{} not found", inst_path.display()));
     }
 
-    println!("Installing {} to {}/{} ...", kernel_name, esp, INST_PATH);
+    println!("Installing {} to {} ...", kernel_name, inst_path.display());
     let splitted_kernel_name = kernel_name.split('-').collect::<Vec<_>>();
     if splitted_kernel_name.len() != 3 {
         return Err(anyhow!("Kernel name does not meet the standard"));
@@ -96,8 +96,8 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
         fs::copy(
             &src_vmlinuz,
             &format!(
-                "{}/{}vmlinuz-{}-{}",
-                esp, INST_PATH, distro_name, kernel_flavor
+                "{}vmlinuz-{}-{}",
+                inst_path.display(), distro_name, kernel_flavor
             ),
         )?;
     } else {
@@ -108,8 +108,8 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
         fs::copy(
             &src_initramfs,
             &format!(
-                "{}/{}initramfs-{}-{}.img",
-                esp, INST_PATH, distro_name, kernel_flavor
+                "{}initramfs-{}-{}.img",
+                inst_path.display(), distro_name, kernel_flavor
             ),
         )?;
     } else {
@@ -119,26 +119,27 @@ fn install_kernel(kernel_name: &str, esp: &str) -> Result<()> {
     Ok(())
 }
 
-fn install_spec_kernel(esp: &str, n: usize) -> Result<()> {
+fn install_spec_kernel(inst_path: &Path, n: usize) -> Result<()> {
     let kernels = ls_kernels()?;
     if n == 0 || n > kernels.len() {
         return Err(anyhow!("Chosen kernel index out of bound"));
     }
-    install_kernel(&kernels[n - 1], esp)?;
+    install_kernel(&kernels[n - 1], inst_path)?;
 
     Ok(())
 }
 
-fn install_newest_kernel(esp: &str) -> Result<()> {
+fn install_newest_kernel(inst_path: &Path) -> Result<()> {
     println!("Installing the newest kernel ...");
     let kernels = ls_kernels()?;
-    install_kernel(&kernels[kernels.len() - 1], esp)?;
+    install_kernel(&kernels[kernels.len() - 1], inst_path)?;
 
     Ok(())
 }
 
 fn main() -> Result<()> {
     let config = read_conf()?;
+    let inst_path = Path::new(&config.esp_mountpoint).join(REL_INST_PATH);
     let matches = App::new("systemd-boot-friend-rs")
         .version(crate_version!())
         .about("Systemd-Boot Kernel Version Selector")
@@ -160,16 +161,16 @@ fn main() -> Result<()> {
         .get_matches();
 
     match matches.subcommand_name() {
-        Some("init") => init(&config.esp_mountpoint)?,
+        Some("init") => init(&inst_path)?,
         Some("list") => disp_kernels()?,
         Some(_) => match matches.subcommand_matches("install-kernel") {
             Some(sub) => match sub.value_of("number") {
-                Some(n) => install_spec_kernel(&config.esp_mountpoint, n.parse::<usize>()?)?,
-                None => install_newest_kernel(&config.esp_mountpoint)?,
+                Some(n) => install_spec_kernel(&inst_path, n.parse::<usize>()?)?,
+                None => install_newest_kernel(&inst_path)?,
             },
-            None => install_newest_kernel(&config.esp_mountpoint)?,
+            None => install_newest_kernel(&inst_path)?,
         },
-        None => install_newest_kernel(&config.esp_mountpoint)?,
+        None => install_newest_kernel(&inst_path)?,
     }
 
     Ok(())
