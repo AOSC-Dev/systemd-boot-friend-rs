@@ -41,7 +41,7 @@ fn init(inst_path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn ls_kernels() -> Result<Vec<String>> {
+fn list_kernels() -> Result<Vec<String>> {
     let kernels = fs::read_dir("/usr/lib/modules")?;
     let mut kernels_ls = Vec::new();
 
@@ -53,8 +53,8 @@ fn ls_kernels() -> Result<Vec<String>> {
     Ok(kernels_ls)
 }
 
-fn disp_kernels() -> Result<()> {
-    let kernels = ls_kernels()?;
+fn display_kernels() -> Result<()> {
+    let kernels = list_kernels()?;
 
     for (i, k) in kernels.into_iter().enumerate() {
         println!("[{}] {}", i + 1, k);
@@ -73,21 +73,24 @@ fn install_kernel(kernel_name: &str, inst_path: &Path) -> Result<()> {
     }
 
     println!("Installing {} to {} ...", kernel_name, inst_path.display());
-    let splitted_kernel_name = kernel_name.split('-').collect::<Vec<_>>();
-    if splitted_kernel_name.len() != 3 {
-        return Err(anyhow!("Kernel name does not meet the standard"));
-    }
-    let kernel_ver = splitted_kernel_name[0];
-    let distro_name = splitted_kernel_name[1];
-    let kernel_flavor = splitted_kernel_name[2];
+    let mut splitted_kernel_name = kernel_name.splitn(3, '-');
+    let kernel_version = splitted_kernel_name
+        .next()
+        .ok_or_else(|| anyhow!("Not standard kernel filename"))?;
+    let distro_name = splitted_kernel_name
+        .next()
+        .ok_or_else(|| anyhow!("Not standard kernel filename"))?;
+    let kernel_flavor = splitted_kernel_name
+        .next()
+        .ok_or_else(|| anyhow!("Not standard kernel filename"))?;
 
     let vmlinuz_path = format!(
         "/boot/vmlinuz-{}-{}-{}",
-        kernel_ver, distro_name, kernel_flavor
+        kernel_version, distro_name, kernel_flavor
     );
     let initramfs_path = format!(
         "/boot/initramfs-{}-{}-{}.img",
-        kernel_ver, distro_name, kernel_flavor
+        kernel_version, distro_name, kernel_flavor
     );
     let src_vmlinuz = Path::new(&vmlinuz_path);
     let src_initramfs = Path::new(&initramfs_path);
@@ -97,7 +100,9 @@ fn install_kernel(kernel_name: &str, inst_path: &Path) -> Result<()> {
             &src_vmlinuz,
             &format!(
                 "{}vmlinuz-{}-{}",
-                inst_path.display(), distro_name, kernel_flavor
+                inst_path.display(),
+                distro_name,
+                kernel_flavor
             ),
         )?;
     } else {
@@ -109,7 +114,9 @@ fn install_kernel(kernel_name: &str, inst_path: &Path) -> Result<()> {
             &src_initramfs,
             &format!(
                 "{}initramfs-{}-{}.img",
-                inst_path.display(), distro_name, kernel_flavor
+                inst_path.display(),
+                distro_name,
+                kernel_flavor
             ),
         )?;
     } else {
@@ -120,8 +127,8 @@ fn install_kernel(kernel_name: &str, inst_path: &Path) -> Result<()> {
 }
 
 fn install_spec_kernel(inst_path: &Path, n: usize) -> Result<()> {
-    let kernels = ls_kernels()?;
-    if n == 0 || n > kernels.len() {
+    let kernels = list_kernels()?;
+    if n < 1 || n > kernels.len() {
         return Err(anyhow!("Chosen kernel index out of bound"));
     }
     install_kernel(&kernels[n - 1], inst_path)?;
@@ -131,7 +138,7 @@ fn install_spec_kernel(inst_path: &Path, n: usize) -> Result<()> {
 
 fn install_newest_kernel(inst_path: &Path) -> Result<()> {
     println!("Installing the newest kernel ...");
-    let kernels = ls_kernels()?;
+    let kernels = list_kernels()?;
     install_kernel(&kernels[kernels.len() - 1], inst_path)?;
 
     Ok(())
@@ -160,17 +167,17 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    match matches.subcommand_name() {
-        Some("init") => init(&inst_path)?,
-        Some("list") => disp_kernels()?,
-        Some(_) => match matches.subcommand_matches("install-kernel") {
-            Some(sub) => match sub.value_of("number") {
-                Some(n) => install_spec_kernel(&inst_path, n.parse::<usize>()?)?,
-                None => install_newest_kernel(&inst_path)?,
-            },
-            None => install_newest_kernel(&inst_path)?,
-        },
-        None => install_newest_kernel(&inst_path)?,
+    match matches.subcommand() {
+        ("init", _) => init(&inst_path)?,
+        ("list", _) => display_kernels()?,
+        ("install-kernel", Some(args)) => {
+            if let Some(n) = args.value_of("number") {
+                install_spec_kernel(&inst_path, n.parse::<usize>()?)?
+            } else {
+                install_newest_kernel(&inst_path)?
+            }
+        }
+        _ => install_newest_kernel(&inst_path)?,
     }
 
     Ok(())
