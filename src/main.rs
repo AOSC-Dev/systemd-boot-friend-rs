@@ -26,7 +26,7 @@ fn init(inst_path: &Path) -> Result<()> {
     println!("Initializing systemd-boot ...");
     Command::new("bootctl")
         .arg("install")
-        .arg("--esp=".to_owned() + inst_path.to_str().unwrap_or_else(|| "/efi"))
+        .arg("--esp=".to_owned() + inst_path.to_str().unwrap_or("/efi"))
         .stdout(Stdio::null())
         .spawn()?;
 
