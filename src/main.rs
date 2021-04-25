@@ -168,7 +168,6 @@ fn main() -> Result<()> {
             SubCommand::with_name("init")
                 .about("Initialize systemd-boot and install the newest kernel"),
         )
-        .subcommand(SubCommand::with_name("mkconf").about("Make systemd-boot config"))
         .subcommand(SubCommand::with_name("list").about("List available kernels"))
         .subcommand(
             SubCommand::with_name("install-kernel")
