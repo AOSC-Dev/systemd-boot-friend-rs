@@ -129,10 +129,10 @@ fn install_kernel(kernel_name: &str, inst_path: &Path) -> Result<()> {
 
 fn install_spec_kernel(inst_path: &Path, n: usize) -> Result<()> {
     let kernels = list_kernels()?;
-    if n < 1 || n > kernels.len() {
+    if n >= kernels.len() {
         return Err(anyhow!("Chosen kernel index out of bound"));
     }
-    install_kernel(&kernels[n - 1], inst_path)?;
+    install_kernel(&kernels[n], inst_path)?;
 
     Ok(())
 }
@@ -148,12 +148,12 @@ fn install_newest_kernel(inst_path: &Path) -> Result<()> {
 fn ask_for_kernel(inst_path: &Path) -> Result<()> {
     let theme = ColorfulTheme::default();
     let kernels = list_kernels()?;
-    let n: usize = Select::with_theme(&theme)
+    let n = Select::with_theme(&theme)
         .items(&kernels)
         .default(kernels.len() - 1)
         .interact()?;
 
-    install_spec_kernel(inst_path, n + 1)?;
+    install_spec_kernel(inst_path, n)?;
 
     Ok(())
 }
@@ -187,7 +187,7 @@ fn main() -> Result<()> {
         ("install-kernel", Some(args)) => {
             if let Some(n) = args.value_of("target") {
                 match n.parse::<usize>() {
-                    Ok(num) => install_spec_kernel(&inst_path, num)?,
+                    Ok(num) => install_spec_kernel(&inst_path, num - 1)?,
                     Err(_) => install_kernel(n, &inst_path)?,
                 }
             } else {
