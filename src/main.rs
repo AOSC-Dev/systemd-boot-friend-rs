@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
 use clap::{crate_version, App, Arg, SubCommand};
+use dialoguer::{theme::ColorfulTheme, Select};
 use serde::Deserialize;
 use std::{
     fs,
@@ -53,7 +54,7 @@ fn list_kernels() -> Result<Vec<String>> {
     Ok(kernels_ls)
 }
 
-fn display_kernels() -> Result<()> {
+fn print_kernels() -> Result<()> {
     let kernels = list_kernels()?;
 
     for (i, k) in kernels.into_iter().enumerate() {
@@ -144,6 +145,19 @@ fn install_newest_kernel(inst_path: &Path) -> Result<()> {
     Ok(())
 }
 
+fn ask_for_kernel(inst_path: &Path) -> Result<()> {
+    let theme = ColorfulTheme::default();
+    let kernels = list_kernels()?;
+    let n: usize = Select::with_theme(&theme)
+        .items(&kernels)
+        .default(kernels.len() - 1)
+        .interact()?;
+
+    install_spec_kernel(inst_path, n + 1)?;
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let config = read_conf()?;
     let inst_path = Path::new(&config.esp_mountpoint).join(REL_INST_PATH);
@@ -160,8 +174,8 @@ fn main() -> Result<()> {
             SubCommand::with_name("install-kernel")
                 .about("Install specific version of kernel")
                 .arg(
-                    Arg::with_name("number")
-                        .help("Number of kernel in the list")
+                    Arg::with_name("target")
+                        .help("Target kernel in the list or the number of the kernel")
                         .index(1),
                 ),
         )
@@ -169,15 +183,18 @@ fn main() -> Result<()> {
 
     match matches.subcommand() {
         ("init", _) => init(&inst_path)?,
-        ("list", _) => display_kernels()?,
+        ("list", _) => print_kernels()?,
         ("install-kernel", Some(args)) => {
-            if let Some(n) = args.value_of("number") {
-                install_spec_kernel(&inst_path, n.parse::<usize>()?)?
+            if let Some(n) = args.value_of("target") {
+                match n.parse::<usize>() {
+                    Ok(num) => install_spec_kernel(&inst_path, num)?,
+                    Err(_) => install_kernel(n, &inst_path)?,
+                }
             } else {
                 install_newest_kernel(&inst_path)?
             }
         }
-        _ => install_newest_kernel(&inst_path)?,
+        _ => ask_for_kernel(&inst_path)?,
     }
 
     Ok(())
