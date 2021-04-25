@@ -1,5 +1,6 @@
 use clap::{crate_version, App, Arg, SubCommand};
 
+/// Build the CLI instance
 pub fn build_cli() -> App<'static, 'static> {
     App::new("systemd-boot-friend-rs")
         .version(crate_version!())
