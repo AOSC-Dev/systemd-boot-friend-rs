@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use clap::{crate_version, App, Arg, SubCommand};
 use dialoguer::{theme::ColorfulTheme, Select};
 use serde::Deserialize;
 use std::{
@@ -7,6 +6,8 @@ use std::{
     path::Path,
     process::{Command, Stdio},
 };
+
+mod cli;
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend-rs.conf";
 const REL_INST_PATH: &str = "EFI/aosc/";
@@ -161,24 +162,7 @@ fn ask_for_kernel(inst_path: &Path) -> Result<()> {
 fn main() -> Result<()> {
     let config = read_conf()?;
     let inst_path = Path::new(&config.esp_mountpoint).join(REL_INST_PATH);
-    let matches = App::new("systemd-boot-friend-rs")
-        .version(crate_version!())
-        .about("Systemd-Boot Kernel Version Selector")
-        .subcommand(
-            SubCommand::with_name("init")
-                .about("Initialize systemd-boot and install the newest kernel"),
-        )
-        .subcommand(SubCommand::with_name("list").about("List available kernels"))
-        .subcommand(
-            SubCommand::with_name("install-kernel")
-                .about("Install specific version of kernel")
-                .arg(
-                    Arg::with_name("target")
-                        .help("Target kernel in the list or the number of the kernel")
-                        .index(1),
-                ),
-        )
-        .get_matches();
+    let matches = cli::build_cli().get_matches();
 
     match matches.subcommand() {
         ("init", _) => init(&inst_path)?,
