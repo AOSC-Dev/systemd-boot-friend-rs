@@ -1,7 +1,5 @@
 use anyhow::{anyhow, Result};
-use console::{style, StyledObject};
 use dialoguer::{theme::ColorfulTheme, Select};
-use lazy_static::lazy_static;
 use serde::Deserialize;
 use std::{
     fs,
@@ -13,9 +11,7 @@ mod cli;
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend-rs.conf";
 const REL_INST_PATH: &str = "EFI/aosc/";
-lazy_static! {
-    static ref OUTPUT_PREFIX: StyledObject<&'static str> = style("[systemd-boot-friend-rs]").bold();
-}
+const OUTPUT_PREFIX: &str = "\u{001b}[1m[systemd-boot-friend-rs]\u{001b}[0m";
 
 #[derive(Debug, Deserialize)]
 struct Config {
@@ -34,14 +30,14 @@ fn read_conf() -> Result<Config> {
 /// Initialize the default environment for friend
 fn init(inst_path: &Path) -> Result<()> {
     // use bootctl to install systemd-boot
-    println!("{} Initializing systemd-boot ...", OUTPUT_PREFIX.to_string());
+    println!("{} Initializing systemd-boot ...", OUTPUT_PREFIX);
     Command::new("bootctl")
         .arg("install")
         .arg("--esp=".to_owned() + inst_path.to_str().unwrap_or("/efi"))
         .stdout(Stdio::null())
         .spawn()?;
     // create folder structure
-    println!("{} Creating folder structure for friend ...", OUTPUT_PREFIX.to_string());
+    println!("{} Creating folder structure for friend ...", OUTPUT_PREFIX);
     fs::create_dir_all(Path::new(inst_path).join(REL_INST_PATH))?;
     // install the newest kernel
     install_newest_kernel(&inst_path)?;
@@ -103,7 +99,7 @@ fn install_kernel(kernel_name: &str, inst_path: &Path) -> Result<()> {
         .next()
         .ok_or_else(|| anyhow!("Not standard kernel filename"))?;
     // generate the path to the source files
-    println!("{} Installing {} to {} ...", OUTPUT_PREFIX.to_string(), kernel_name, inst_path.display());
+    println!("{} Installing {} to {} ...", OUTPUT_PREFIX, kernel_name, inst_path.display());
     let vmlinuz_path = format!(
         "/boot/vmlinuz-{}-{}-{}",
         kernel_version, distro_name, kernel_flavor
@@ -159,7 +155,7 @@ fn install_spec_kernel(inst_path: &Path, n: usize) -> Result<()> {
 }
 
 fn install_newest_kernel(inst_path: &Path) -> Result<()> {
-    println!("{} Installing the newest kernel ...", OUTPUT_PREFIX.to_string());
+    println!("{} Installing the newest kernel ...", OUTPUT_PREFIX);
     let kernels = list_kernels()?;
     // Install the last one in the kernel list as the list
     // has already been sorted by filename and version
