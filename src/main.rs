@@ -65,7 +65,6 @@ fn list_kernels() -> Result<Vec<String>> {
     Ok(kernels_ls)
 }
 
-#[inline]
 fn print_kernels() -> Result<()> {
     let kernels = list_kernels()?;
     // print kernel filenames with numbers for users to choose
