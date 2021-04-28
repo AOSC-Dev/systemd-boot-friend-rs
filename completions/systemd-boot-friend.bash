@@ -1,4 +1,4 @@
-_systemd-boot-friend-rs() {
+_systemd-boot-friend() {
     local i cur prev opts cmds
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
@@ -9,8 +9,8 @@ _systemd-boot-friend-rs() {
     for i in ${COMP_WORDS[@]}
     do
         case "${i}" in
-            systemd-boot-friend-rs)
-                cmd="systemd-boot-friend-rs"
+            systemd-boot-friend)
+                cmd="systemd-boot-friend"
                 ;;
             
             help)
@@ -31,7 +31,7 @@ _systemd-boot-friend-rs() {
     done
 
     case "${cmd}" in
-        systemd-boot-friend-rs)
+        systemd-boot-friend)
             opts=" -h -V  --help --version   init list install-kernel help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -47,7 +47,7 @@ _systemd-boot-friend-rs() {
             return 0
             ;;
         
-        systemd__boot__friend__rs__help)
+        systemd__boot__friend__help)
             opts=" -h -V  --help --version  "
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -62,7 +62,7 @@ _systemd-boot-friend-rs() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        systemd__boot__friend__rs__init)
+        systemd__boot__friend__init)
             opts=" -h -V  --help --version  "
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -77,7 +77,7 @@ _systemd-boot-friend-rs() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        systemd__boot__friend__rs__install__kernel)
+        systemd__boot__friend__install__kernel)
             opts=" -h -V  --help --version  <target> "
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -92,7 +92,7 @@ _systemd-boot-friend-rs() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        systemd__boot__friend__rs__list)
+        systemd__boot__friend__list)
             opts=" -h -V  --help --version  "
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -110,4 +110,4 @@ _systemd-boot-friend-rs() {
     esac
 }
 
-complete -F _systemd-boot-friend-rs -o bashdefault -o default systemd-boot-friend-rs
+complete -F _systemd-boot-friend -o bashdefault -o default systemd-boot-friend

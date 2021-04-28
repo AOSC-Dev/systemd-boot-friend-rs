@@ -1,8 +1,8 @@
-#compdef systemd-boot-friend-rs
+#compdef systemd-boot-friend
 
 autoload -U is-at-least
 
-_systemd-boot-friend-rs() {
+_systemd-boot-friend() {
     typeset -A opt_args
     typeset -a _arguments_options
     local ret=1
@@ -19,14 +19,14 @@ _systemd-boot-friend-rs() {
 '--help[Prints help information]' \
 '-V[Prints version information]' \
 '--version[Prints version information]' \
-":: :_systemd-boot-friend-rs_commands" \
+":: :_systemd-boot-friend_commands" \
 "*::: :->systemd-boot-friend-rs" \
 && ret=0
     case $state in
     (systemd-boot-friend-rs)
         words=($line[1] "${words[@]}")
         (( CURRENT += 1 ))
-        curcontext="${curcontext%:*:*}:systemd-boot-friend-rs-command-$line[1]:"
+        curcontext="${curcontext%:*:*}:systemd-boot-friend-command-$line[1]:"
         case $line[1] in
             (init)
 _arguments "${_arguments_options[@]}" \
@@ -66,43 +66,43 @@ _arguments "${_arguments_options[@]}" \
 esac
 }
 
-(( $+functions[_systemd-boot-friend-rs_commands] )) ||
-_systemd-boot-friend-rs_commands() {
+(( $+functions[_systemd-boot-friend_commands] )) ||
+_systemd-boot-friend_commands() {
     local commands; commands=(
         "init:Initialize systemd-boot and install the newest kernel" \
 "list:List available kernels" \
 "install-kernel:Install specific version of kernel" \
 "help:Prints this message or the help of the given subcommand(s)" \
     )
-    _describe -t commands 'systemd-boot-friend-rs commands' commands "$@"
+    _describe -t commands 'systemd-boot-friend commands' commands "$@"
 }
-(( $+functions[_systemd-boot-friend-rs__help_commands] )) ||
-_systemd-boot-friend-rs__help_commands() {
+(( $+functions[_systemd-boot-friend__help_commands] )) ||
+_systemd-boot-friend__help_commands() {
     local commands; commands=(
         
     )
-    _describe -t commands 'systemd-boot-friend-rs help commands' commands "$@"
+    _describe -t commands 'systemd-boot-friend help commands' commands "$@"
 }
-(( $+functions[_systemd-boot-friend-rs__init_commands] )) ||
-_systemd-boot-friend-rs__init_commands() {
+(( $+functions[_systemd-boot-friend__init_commands] )) ||
+_systemd-boot-friend__init_commands() {
     local commands; commands=(
         
     )
-    _describe -t commands 'systemd-boot-friend-rs init commands' commands "$@"
+    _describe -t commands 'systemd-boot-friend init commands' commands "$@"
 }
-(( $+functions[_systemd-boot-friend-rs__install-kernel_commands] )) ||
-_systemd-boot-friend-rs__install-kernel_commands() {
+(( $+functions[_systemd-boot-friend__install-kernel_commands] )) ||
+_systemd-boot-friend__install-kernel_commands() {
     local commands; commands=(
         
     )
-    _describe -t commands 'systemd-boot-friend-rs install-kernel commands' commands "$@"
+    _describe -t commands 'systemd-boot-friend install-kernel commands' commands "$@"
 }
-(( $+functions[_systemd-boot-friend-rs__list_commands] )) ||
-_systemd-boot-friend-rs__list_commands() {
+(( $+functions[_systemd-boot-friend__list_commands] )) ||
+_systemd-boot-friend__list_commands() {
     local commands; commands=(
         
     )
-    _describe -t commands 'systemd-boot-friend-rs list commands' commands "$@"
+    _describe -t commands 'systemd-boot-friend list commands' commands "$@"
 }
 
-_systemd-boot-friend-rs "$@"
+_systemd-boot-friend "$@"
