@@ -1,3 +1,5 @@
+#![allow(non_snake_case)]
+
 use anyhow::{anyhow, Result};
 use dialoguer::{theme::ColorfulTheme, Select};
 use serde::Deserialize;
@@ -15,32 +17,41 @@ const OUTPUT_PREFIX: &str = "\u{001b}[1m[systemd-boot-friend]\u{001b}[0m";
 
 #[derive(Debug, Deserialize)]
 struct Config {
-    esp_mountpoint: String,
+    ESP_MOUNTPOINT: String,
+    // BOOTARG: String, // not implemented yet
+}
+
+#[macro_export]
+macro_rules! println_with_prefix {
+    ($($arg:tt)+) => {
+        print!("{} ", OUTPUT_PREFIX);
+        println!($($arg)+);
+    };
 }
 
 /// Reads the configuration file at CONF_PATH
 fn read_conf() -> Result<Config> {
     let content = fs::read(CONF_PATH)?;
     // deserialize into Config struct
-    let config: Config = serde_json::from_slice(&content)?;
+    let config: Config = toml::from_slice(&content)?;
 
     Ok(config)
 }
 
 /// Initialize the default environment for friend
-fn init(inst_path: &Path) -> Result<()> {
+fn init(install_path: &Path) -> Result<()> {
     // use bootctl to install systemd-boot
-    println!("{} Initializing systemd-boot ...", OUTPUT_PREFIX);
+    println_with_prefix!("Initializing systemd-boot ...");
     Command::new("bootctl")
         .arg("install")
-        .arg("--esp=".to_owned() + inst_path.to_str().unwrap_or("/efi"))
+        .arg("--esp=".to_owned() + install_path.to_str().unwrap_or("/efi"))
         .stdout(Stdio::null())
         .spawn()?;
     // create folder structure
-    println!("{} Creating folder structure for friend ...", OUTPUT_PREFIX);
-    fs::create_dir_all(Path::new(inst_path).join(REL_INST_PATH))?;
+    println_with_prefix!("Creating folder structure for friend ...");
+    fs::create_dir_all(Path::new(install_path).join(REL_INST_PATH))?;
     // install the newest kernel
-    install_newest_kernel(&inst_path)?;
+    install_newest_kernel(&install_path)?;
 
     // Currently users have to manually create the boot entry config,
     // boot entry auto generator may be implemented in the future
@@ -54,15 +65,15 @@ fn init(inst_path: &Path) -> Result<()> {
 fn list_kernels() -> Result<Vec<String>> {
     // read /usr/lib/modules to get kernel filenames
     let kernels = fs::read_dir("/usr/lib/modules")?;
-    let mut kernels_ls = Vec::new();
+    let mut kernels_list = Vec::new();
     for kernel in kernels {
-        kernels_ls.push(kernel.unwrap().file_name().into_string().unwrap());
+        kernels_list.push(kernel.unwrap().file_name().into_string().unwrap());
     }
     // Sort the vector, thus the kernel filenames are
     // arranged with versions from older to newer
-    kernels_ls.sort();
+    kernels_list.sort();
 
-    Ok(kernels_ls)
+    Ok(kernels_list)
 }
 
 fn print_kernels() -> Result<()> {
@@ -76,14 +87,14 @@ fn print_kernels() -> Result<()> {
 }
 
 /// Install a specific kernel to the esp using the given kernel filename
-fn install_kernel(kernel_name: &str, inst_path: &Path) -> Result<()> {
+fn install_kernel(kernel_name: &str, install_path: &Path) -> Result<()> {
     // if the path does not exist, ask the user for initializing friend
-    if !inst_path.exists() {
-        println!("{} does not exist. Doing nothing.", inst_path.display());
+    if !install_path.exists() {
+        println!("{} does not exist. Doing nothing.", install_path.display());
         println!("If you wish to use systemd-boot, run systemd-boot-friend init.");
         println!("Or, if your ESP mountpoint is not at esp_mountpoint, please edit /etc/systemd-boot-friend-rs.conf.");
 
-        return Err(anyhow!("{} not found", inst_path.display()));
+        return Err(anyhow!("{} not found", install_path.display()));
     }
     // Split the kernel filename into 3 parts in order to determine
     // the version, name and the flavor of the chosen kernel
@@ -98,7 +109,7 @@ fn install_kernel(kernel_name: &str, inst_path: &Path) -> Result<()> {
         .next()
         .ok_or_else(|| anyhow!("Not standard kernel filename"))?;
     // generate the path to the source files
-    println!("{} Installing {} to {} ...", OUTPUT_PREFIX, kernel_name, inst_path.display());
+    println!("{} Installing {} to {} ...", OUTPUT_PREFIX, kernel_name, install_path.display());
     let vmlinuz_path = format!(
         "/boot/vmlinuz-{}-{}-{}",
         kernel_version, distro_name, kernel_flavor
@@ -109,14 +120,14 @@ fn install_kernel(kernel_name: &str, inst_path: &Path) -> Result<()> {
     );
     let src_vmlinuz = Path::new(&vmlinuz_path);
     let src_initramfs = Path::new(&initramfs_path);
-    // Copy the source files to the `inst_path` using specific
+    // Copy the source files to the `install_path` using specific
     // filename format, remove the version parts of the files
     if src_vmlinuz.exists() {
         fs::copy(
             &src_vmlinuz,
             &format!(
                 "{}vmlinuz-{}-{}",
-                inst_path.display(),
+                install_path.display(),
                 distro_name,
                 kernel_flavor
             ),
@@ -130,7 +141,7 @@ fn install_kernel(kernel_name: &str, inst_path: &Path) -> Result<()> {
             &src_initramfs,
             &format!(
                 "{}initramfs-{}-{}.img",
-                inst_path.display(),
+                install_path.display(),
                 distro_name,
                 kernel_flavor
             ),
@@ -143,28 +154,28 @@ fn install_kernel(kernel_name: &str, inst_path: &Path) -> Result<()> {
 }
 
 /// Install a specific kernel to the esp using the given position in the kernel list
-fn install_spec_kernel(inst_path: &Path, n: usize) -> Result<()> {
+fn install_specific_kernel_in_list(install_path: &Path, n: usize) -> Result<()> {
     let kernels = list_kernels()?;
     if n >= kernels.len() {
         return Err(anyhow!("Chosen kernel index out of bound"));
     }
-    install_kernel(&kernels[n], inst_path)?;
+    install_kernel(&kernels[n], install_path)?;
 
     Ok(())
 }
 
-fn install_newest_kernel(inst_path: &Path) -> Result<()> {
-    println!("{} Installing the newest kernel ...", OUTPUT_PREFIX);
+fn install_newest_kernel(install_path: &Path) -> Result<()> {
+    println_with_prefix!("Installing the newest kernel ...");
     let kernels = list_kernels()?;
     // Install the last one in the kernel list as the list
     // has already been sorted by filename and version
-    install_kernel(&kernels[kernels.len() - 1], inst_path)?;
+    install_kernel(&kernels[kernels.len() - 1], install_path)?;
 
     Ok(())
 }
 
 /// Default behavior when calling without any subcommands
-fn ask_for_kernel(inst_path: &Path) -> Result<()> {
+fn ask_for_kernel(install_path: &Path) -> Result<()> {
     let kernels = list_kernels()?;
     // build dialoguer Select for kernel selection
     let theme = ColorfulTheme::default();
@@ -173,30 +184,30 @@ fn ask_for_kernel(inst_path: &Path) -> Result<()> {
         .default(kernels.len() - 1)
         .interact()?;
 
-    install_spec_kernel(inst_path, n)?;
+    install_specific_kernel_in_list(install_path, n)?;
 
     Ok(())
 }
 
 fn main() -> Result<()> {
     let config = read_conf()?;
-    let inst_path = Path::new(&config.esp_mountpoint).join(REL_INST_PATH);
+    let install_path = Path::new(&config.ESP_MOUNTPOINT).join(REL_INST_PATH);
     let matches = cli::build_cli().get_matches();
     // Switch table
     match matches.subcommand() {
-        ("init", _) => init(&inst_path)?,
+        ("init", _) => init(&install_path)?,
         ("list", _) => print_kernels()?,
         ("install-kernel", Some(args)) => {
             if let Some(n) = args.value_of("target") {
                 match n.parse::<usize>() {
-                    Ok(num) => install_spec_kernel(&inst_path, num - 1)?,
-                    Err(_) => install_kernel(n, &inst_path)?,
+                    Ok(num) => install_specific_kernel_in_list(&install_path, num - 1)?,
+                    Err(_) => install_kernel(n, &install_path)?,
                 }
             } else {
-                install_newest_kernel(&inst_path)?
+                install_newest_kernel(&install_path)?
             }
         }
-        _ => ask_for_kernel(&inst_path)?,
+        _ => ask_for_kernel(&install_path)?,
     }
 
     Ok(())
