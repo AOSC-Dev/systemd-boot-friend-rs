@@ -9,9 +9,9 @@ use std::{
 
 mod cli;
 
-const CONF_PATH: &str = "/etc/systemd-boot-friend-rs.conf";
+const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const REL_INST_PATH: &str = "EFI/aosc/";
-const OUTPUT_PREFIX: &str = "\u{001b}[1m[systemd-boot-friend-rs]\u{001b}[0m";
+const OUTPUT_PREFIX: &str = "\u{001b}[1m[systemd-boot-friend]\u{001b}[0m";
 
 #[derive(Debug, Deserialize)]
 struct Config {
