@@ -21,7 +21,6 @@ struct Config {
     // BOOTARG: String, // not implemented yet
 }
 
-#[macro_export]
 macro_rules! println_with_prefix {
     ($($arg:tt)+) => {
         print!("{} ", OUTPUT_PREFIX);
