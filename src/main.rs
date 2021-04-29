@@ -28,6 +28,16 @@ macro_rules! println_with_prefix {
     };
 }
 
+macro_rules! yield_into {
+    { ( $x:ident ) = $v:expr, $e:expr } => {
+        $x = $v.next().ok_or_else(|| anyhow!("{}", $e))?;
+    };
+    { ( $x:ident, $($y:ident),+ ) = $v:expr, $e:expr } => {
+        $x = $v.next().ok_or_else(|| anyhow!("{}", $e))?;
+        yield_into!(($($y),+) = $v, $e);
+    }
+}
+
 /// Reads the configuration file at CONF_PATH
 fn read_conf() -> Result<Config> {
     let content = fs::read(CONF_PATH)?;
@@ -98,17 +108,19 @@ fn install_kernel(kernel_name: &str, install_path: &Path) -> Result<()> {
     // Split the kernel filename into 3 parts in order to determine
     // the version, name and the flavor of the chosen kernel
     let mut splitted_kernel_name = kernel_name.splitn(3, '-');
-    let kernel_version = splitted_kernel_name
-        .next()
-        .ok_or_else(|| anyhow!("Not standard kernel filename"))?;
-    let distro_name = splitted_kernel_name
-        .next()
-        .ok_or_else(|| anyhow!("Not standard kernel filename"))?;
-    let kernel_flavor = splitted_kernel_name
-        .next()
-        .ok_or_else(|| anyhow!("Not standard kernel filename"))?;
+    let kernel_version;
+    let distro_name;
+    let kernel_flavor;
+    yield_into!(
+        (kernel_version, distro_name, kernel_flavor) = splitted_kernel_name,
+        "Invalid kernel filename"
+    );
     // generate the path to the source files
-    println!("{} Installing {} to {} ...", OUTPUT_PREFIX, kernel_name, install_path.display());
+    println_with_prefix!(
+        "Installing {} to {} ...",
+        kernel_name,
+        install_path.display()
+    );
     let vmlinuz_path = format!(
         "/boot/vmlinuz-{}-{}-{}",
         kernel_version, distro_name, kernel_flavor
