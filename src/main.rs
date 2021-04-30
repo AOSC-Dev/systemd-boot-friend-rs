@@ -48,19 +48,19 @@ fn read_conf() -> Result<Config> {
 }
 
 /// Initialize the default environment for friend
-fn init(install_path: &Path) -> Result<()> {
+fn init(install_path: &Path, esp_path: &str) -> Result<()> {
     // use bootctl to install systemd-boot
     println_with_prefix!("Initializing systemd-boot ...");
     Command::new("bootctl")
         .arg("install")
-        .arg("--esp=".to_owned() + install_path.to_str().unwrap_or("/efi"))
+        .arg("--esp=".to_owned() + esp_path)
         .stdout(Stdio::null())
         .spawn()?;
     // create folder structure
     println_with_prefix!("Creating folder structure for friend ...");
-    fs::create_dir_all(Path::new(install_path).join(REL_INST_PATH))?;
+    fs::create_dir_all(install_path)?;
     // install the newest kernel
-    install_newest_kernel(&install_path)?;
+    install_newest_kernel(install_path)?;
 
     // Currently users have to manually create the boot entry config,
     // boot entry auto generator may be implemented in the future
@@ -206,7 +206,7 @@ fn main() -> Result<()> {
     let matches = cli::build_cli().get_matches();
     // Switch table
     match matches.subcommand() {
-        ("init", _) => init(&install_path)?,
+        ("init", _) => init(&install_path, &config.ESP_MOUNTPOINT)?,
         ("list", _) => print_kernels()?,
         ("install-kernel", Some(args)) => {
             if let Some(n) = args.value_of("target") {
