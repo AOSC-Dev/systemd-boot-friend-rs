@@ -224,9 +224,9 @@ fn main() -> Result<()> {
                 } else {
                     install_newest_kernel(&install_path)?
                 }
-            },
+            }
         },
-        _ => ask_for_kernel(&install_path)?,
+        None => ask_for_kernel(&install_path)?,
     }
 
     Ok(())

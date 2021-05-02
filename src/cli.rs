@@ -6,7 +6,7 @@ pub struct Interface {
     #[argh(subcommand)]
     pub nested: Option<SubCommandEnum>,
     #[argh(switch)]
-    /// show version of systemd-boot-friend
+    /// show the version of systemd-boot-friend
     pub version: bool,
 }
 
@@ -30,7 +30,7 @@ pub struct List {}
 
 #[derive(FromArgs, PartialEq, Debug)]
 #[argh(subcommand, name = "install-kernel")]
-/// Install specific kernel
+/// Install a specific kernel
 pub struct InstallKernel {
     #[argh(positional)]
     pub target: Option<String>,
