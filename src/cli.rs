@@ -1,22 +1,37 @@
-use clap::{crate_version, App, Arg, SubCommand};
+use argh::FromArgs;
 
-/// Build the CLI instance
-pub fn build_cli() -> App<'static, 'static> {
-    App::new("systemd-boot-friend-rs")
-        .version(crate_version!())
-        .about("Systemd-Boot Kernel Version Selector")
-        .subcommand(
-            SubCommand::with_name("init")
-                .about("Initialize systemd-boot and install the newest kernel"),
-        )
-        .subcommand(SubCommand::with_name("list").about("List available kernels"))
-        .subcommand(
-            SubCommand::with_name("install-kernel")
-                .about("Install specific version of kernel")
-                .arg(
-                    Arg::with_name("target")
-                        .help("Target kernel in the list or the number of the kernel")
-                        .index(1),
-                ),
-        )
+#[derive(FromArgs, PartialEq, Debug)]
+/// Systemd-Boot Kernel Version Selector
+pub struct Interface {
+    #[argh(subcommand)]
+    pub nested: Option<SubCommandEnum>,
+    #[argh(switch)]
+    /// show version of systemd-boot-friend
+    pub version: bool,
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand)]
+pub enum SubCommandEnum {
+    Init(Init),
+    List(List),
+    InstallKernel(InstallKernel),
+}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "init")]
+/// Initialize systemd-boot-friend
+pub struct Init {}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "list")]
+/// List all available kernels
+pub struct List {}
+
+#[derive(FromArgs, PartialEq, Debug)]
+#[argh(subcommand, name = "install-kernel")]
+/// Install specific kernel
+pub struct InstallKernel {
+    #[argh(positional)]
+    pub target: Option<String>,
 }

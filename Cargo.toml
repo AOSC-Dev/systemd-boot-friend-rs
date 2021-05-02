@@ -10,11 +10,8 @@ edition = "2018"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
 anyhow = "1.0"
-clap = "2.33"
+argh = "0.1"
 dialoguer = "0.8"
-
-[build-dependencies]
-clap = "2.33"
 
 [profile.release]
 lto = true

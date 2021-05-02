@@ -1,6 +1,8 @@
 #![allow(non_snake_case)]
 
 use anyhow::{anyhow, Result};
+use argh::from_env;
+use cli::{Interface, SubCommandEnum};
 use dialoguer::{theme::ColorfulTheme, Select};
 use serde::Deserialize;
 use std::{
@@ -203,21 +205,27 @@ fn ask_for_kernel(install_path: &Path) -> Result<()> {
 fn main() -> Result<()> {
     let config = read_conf()?;
     let install_path = Path::new(&config.ESP_MOUNTPOINT).join(REL_INST_PATH);
-    let matches = cli::build_cli().get_matches();
+    let matches: Interface = from_env();
+    if matches.version {
+        println_with_prefix!(env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
     // Switch table
-    match matches.subcommand() {
-        ("init", _) => init(&install_path, &config.ESP_MOUNTPOINT)?,
-        ("list", _) => print_kernels()?,
-        ("install-kernel", Some(args)) => {
-            if let Some(n) = args.value_of("target") {
-                match n.parse::<usize>() {
-                    Ok(num) => install_specific_kernel_in_list(&install_path, num - 1)?,
-                    Err(_) => install_kernel(n, &install_path)?,
+    match matches.nested {
+        Some(s) => match s {
+            SubCommandEnum::Init(_) => init(&install_path, &config.ESP_MOUNTPOINT)?,
+            SubCommandEnum::List(_) => print_kernels()?,
+            SubCommandEnum::InstallKernel(args) => {
+                if let Some(n) = args.target {
+                    match n.parse::<usize>() {
+                        Ok(num) => install_specific_kernel_in_list(&install_path, num - 1)?,
+                        Err(_) => install_kernel(&n, &install_path)?,
+                    }
+                } else {
+                    install_newest_kernel(&install_path)?
                 }
-            } else {
-                install_newest_kernel(&install_path)?
-            }
-        }
+            },
+        },
         _ => ask_for_kernel(&install_path)?,
     }
 
