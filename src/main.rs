@@ -4,8 +4,8 @@ use anyhow::{anyhow, Result};
 use argh::from_env;
 use cli::{Interface, SubCommandEnum};
 use dialoguer::{theme::ColorfulTheme, Select};
-use serde::Deserialize;
 use semver::Version;
+use serde::Deserialize;
 use std::{
     fs,
     path::Path,
@@ -74,24 +74,26 @@ fn init(install_path: &Path, esp_path: &str) -> Result<()> {
 }
 
 /// Generate a sorted vector of kernel filenames
-fn list_kernels() -> Result<Vec<Version>> {
+fn list_kernels() -> Result<Vec<String>> {
     // read /usr/lib/modules to get kernel filenames
     let kernels = fs::read_dir("/usr/lib/modules")?;
     let mut kernels_list = Vec::new();
     for kernel in kernels {
-        kernels_list.push(Version::parse(&kernel.unwrap().file_name().into_string().unwrap())?);
+        kernels_list.push(Version::parse(
+            &kernel.unwrap().file_name().into_string().unwrap(),
+        )?);
     }
     // Sort the vector, thus the kernel filenames are
     // arranged with versions from older to newer
     kernels_list.sort();
 
-    Ok(kernels_list)
+    Ok(kernels_list.iter().map(|k| k.to_string()).collect())
 }
 
 fn print_kernels() -> Result<()> {
     let kernels = list_kernels()?;
     // print kernel filenames with numbers for users to choose
-    for (i, k) in kernels.into_iter().enumerate() {
+    for (i, k) in kernels.iter().enumerate() {
         println!("[{}] {}", i + 1, k);
     }
 
@@ -173,7 +175,7 @@ fn install_specific_kernel_in_list(install_path: &Path, n: usize) -> Result<()> 
     if n >= kernels.len() {
         return Err(anyhow!("Chosen kernel index out of bound"));
     }
-    install_kernel(&kernels[n].to_string(), install_path)?;
+    install_kernel(&kernels[n], install_path)?;
 
     Ok(())
 }
@@ -183,7 +185,7 @@ fn install_newest_kernel(install_path: &Path) -> Result<()> {
     let kernels = list_kernels()?;
     // Install the last one in the kernel list as the list
     // has already been sorted by filename and version
-    install_kernel(&kernels[kernels.len() - 1].to_string(), install_path)?;
+    install_kernel(&kernels[kernels.len() - 1], install_path)?;
 
     Ok(())
 }
