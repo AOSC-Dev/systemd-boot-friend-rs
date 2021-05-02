@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 use anyhow::{anyhow, Result};
 use argh::from_env;
 use cli::{Interface, SubCommandEnum};
@@ -20,7 +18,8 @@ const OUTPUT_PREFIX: &str = "\u{001b}[1m[systemd-boot-friend]\u{001b}[0m";
 
 #[derive(Debug, Deserialize)]
 struct Config {
-    ESP_MOUNTPOINT: String,
+    #[serde(rename = "ESP_MOUNTPOINT")]
+    esp_mountpoint: String,
     // BOOTARG: String, // not implemented yet
 }
 
@@ -106,7 +105,7 @@ fn install_kernel(kernel_name: &str, install_path: &Path) -> Result<()> {
     if !install_path.exists() {
         println!("{} does not exist. Doing nothing.", install_path.display());
         println!("If you wish to use systemd-boot, run systemd-boot-friend init.");
-        println!("Or, if your ESP mountpoint is not at esp_mountpoint, please edit /etc/systemd-boot-friend-rs.conf.");
+        println!("Or, if your ESP mountpoint is not at ESP_MOUNTPOINT, please edit /etc/systemd-boot-friend-rs.conf.");
 
         return Err(anyhow!("{} not found", install_path.display()));
     }
@@ -207,7 +206,7 @@ fn ask_for_kernel(install_path: &Path) -> Result<()> {
 
 fn main() -> Result<()> {
     let config = read_conf()?;
-    let install_path = Path::new(&config.ESP_MOUNTPOINT).join(REL_INST_PATH);
+    let install_path = Path::new(&config.esp_mountpoint).join(REL_INST_PATH);
     let matches: Interface = from_env();
     if matches.version {
         println_with_prefix!(env!("CARGO_PKG_VERSION"));
@@ -216,7 +215,7 @@ fn main() -> Result<()> {
     // Switch table
     match matches.nested {
         Some(s) => match s {
-            SubCommandEnum::Init(_) => init(&install_path, &config.ESP_MOUNTPOINT)?,
+            SubCommandEnum::Init(_) => init(&install_path, &config.esp_mountpoint)?,
             SubCommandEnum::List(_) => print_kernels()?,
             SubCommandEnum::InstallKernel(args) => {
                 if let Some(n) = args.target {
