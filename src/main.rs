@@ -87,7 +87,7 @@ fn list_kernels() -> Result<Vec<String>> {
     // arranged with versions from older to newer
     kernels_list.sort();
 
-    Ok(kernels_list.iter().map(|k| k.to_string()).collect())
+    Ok(kernels_list.iter().map(|k| k.to_string()).rev().collect())
 }
 
 fn print_kernels() -> Result<()> {
@@ -185,7 +185,7 @@ fn install_newest_kernel(install_path: &Path) -> Result<()> {
     let kernels = list_kernels()?;
     // Install the last one in the kernel list as the list
     // has already been sorted by filename and version
-    install_kernel(&kernels[kernels.len() - 1], install_path)?;
+    install_kernel(&kernels[0], install_path)?;
 
     Ok(())
 }
@@ -197,7 +197,7 @@ fn ask_for_kernel(install_path: &Path) -> Result<()> {
     let theme = ColorfulTheme::default();
     let n = Select::with_theme(&theme)
         .items(&kernels)
-        .default(kernels.len() - 1)
+        .default(0)
         .interact()?;
 
     install_specific_kernel_in_list(install_path, n)?;
