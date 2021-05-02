@@ -1,6 +1,6 @@
 use argh::FromArgs;
 
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(FromArgs, Debug)]
 /// Systemd-Boot Kernel Version Selector
 pub struct Interface {
     #[argh(subcommand)]
@@ -10,7 +10,7 @@ pub struct Interface {
     pub version: bool,
 }
 
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(FromArgs, Debug)]
 #[argh(subcommand)]
 pub enum SubCommandEnum {
     Init(Init),
@@ -18,17 +18,17 @@ pub enum SubCommandEnum {
     InstallKernel(InstallKernel),
 }
 
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "init")]
 /// Initialize systemd-boot-friend
 pub struct Init {}
 
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "list")]
 /// List all available kernels
 pub struct List {}
 
-#[derive(FromArgs, PartialEq, Debug)]
+#[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "install-kernel")]
 /// Install a specific kernel
 pub struct InstallKernel {
