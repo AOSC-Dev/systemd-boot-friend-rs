@@ -210,7 +210,7 @@ fn ask_for_kernel(install_path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Create an systemd-boot entry config
+/// Create a systemd-boot entry config
 fn make_config(esp_path: &Path, bootarg: &str, force_write: bool) -> Result<()> {
     let newest_kernel = &list_kernels()?[0];
     let (_, distro_name, kernel_flavor) = split_kernel_name(newest_kernel)?;
