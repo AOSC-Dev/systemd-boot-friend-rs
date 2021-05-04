@@ -5,7 +5,7 @@ use argh::FromArgs;
 pub struct Interface {
     #[argh(subcommand)]
     pub nested: Option<SubCommandEnum>,
-    #[argh(switch)]
+    #[argh(switch, short = 'V')]
     /// show the version of systemd-boot-friend
     pub version: bool,
 }
@@ -14,6 +14,7 @@ pub struct Interface {
 #[argh(subcommand)]
 pub enum SubCommandEnum {
     Init(Init),
+    MakeConf(MakeConf),
     List(List),
     InstallKernel(InstallKernel),
 }
@@ -22,6 +23,15 @@ pub enum SubCommandEnum {
 #[argh(subcommand, name = "init")]
 /// Initialize systemd-boot-friend
 pub struct Init {}
+
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "mkconf")]
+/// Create systemd-boot entry config
+pub struct MakeConf {
+    /// force rewrite the entry config or not
+    #[argh(switch, short = 'f')]
+    pub force: bool,
+}
 
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "list")]

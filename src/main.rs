@@ -6,7 +6,8 @@ use semver::Version;
 use serde::Deserialize;
 use std::{
     fs,
-    path::Path,
+    io::Write,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
@@ -19,8 +20,9 @@ const OUTPUT_PREFIX: &str = "\u{001b}[1m[systemd-boot-friend]\u{001b}[0m";
 #[derive(Debug, Deserialize)]
 struct Config {
     #[serde(rename = "ESP_MOUNTPOINT")]
-    esp_mountpoint: String,
-    // BOOTARG: String, // not implemented yet
+    esp_mountpoint: PathBuf,
+    #[serde(rename = "BOOTARG")]
+    bootarg: String,
 }
 
 macro_rules! println_with_prefix {
@@ -50,12 +52,17 @@ fn read_conf() -> Result<Config> {
 }
 
 /// Initialize the default environment for friend
-fn init(install_path: &Path, esp_path: &str) -> Result<()> {
+fn init(install_path: &Path, esp_path: &Path, bootarg: &str) -> Result<()> {
     // use bootctl to install systemd-boot
     println_with_prefix!("Initializing systemd-boot ...");
     Command::new("bootctl")
         .arg("install")
-        .arg("--esp=".to_owned() + esp_path)
+        .arg(
+            "--esp=".to_owned()
+                + esp_path
+                    .to_str()
+                    .ok_or_else(|| anyhow!("Invalid ESP_MOUNTPOINT"))?,
+        )
         .stdout(Stdio::null())
         .spawn()?;
     // create folder structure
@@ -64,10 +71,8 @@ fn init(install_path: &Path, esp_path: &str) -> Result<()> {
     // install the newest kernel
     install_newest_kernel(install_path)?;
 
-    // Currently users have to manually create the boot entry config,
-    // boot entry auto generator may be implemented in the future
-    println!("Please make sure you have written the boot entry config for systemd-boot,");
-    println!("see https://systemd.io/BOOT_LOADER_SPECIFICATION/ for further information.");
+    // Create systemd-boot entry config
+    make_config(esp_path, bootarg, true)?;
 
     Ok(())
 }
@@ -99,18 +104,9 @@ fn print_kernels() -> Result<()> {
     Ok(())
 }
 
-/// Install a specific kernel to the esp using the given kernel filename
-fn install_kernel(kernel_name: &str, install_path: &Path) -> Result<()> {
-    // if the path does not exist, ask the user for initializing friend
-    if !install_path.exists() {
-        println!("{} does not exist. Doing nothing.", install_path.display());
-        println!("If you wish to use systemd-boot, run systemd-boot-friend init.");
-        println!("Or, if your ESP mountpoint is not at ESP_MOUNTPOINT, please edit /etc/systemd-boot-friend-rs.conf.");
-
-        return Err(anyhow!("{} not found", install_path.display()));
-    }
+fn split_kernel_name(kernel_name: &str) -> Result<(&str, &str, &str)> {
     // Split the kernel filename into 3 parts in order to determine
-    // the version, name and the flavor of the chosen kernel
+    // the version, name and the flavor of the kernel
     let mut splitted_kernel_name = kernel_name.splitn(3, '-');
     let kernel_version;
     let distro_name;
@@ -119,6 +115,20 @@ fn install_kernel(kernel_name: &str, install_path: &Path) -> Result<()> {
         (kernel_version, distro_name, kernel_flavor) = splitted_kernel_name,
         "Invalid kernel filename"
     );
+    Ok((kernel_version, distro_name, kernel_flavor))
+}
+
+/// Install a specific kernel to the esp using the given kernel filename
+fn install_kernel(kernel_name: &str, install_path: &Path) -> Result<()> {
+    // if the path does not exist, ask the user for initializing friend
+    if !install_path.exists() {
+        println_with_prefix!("{} does not exist. Doing nothing.", install_path.display());
+        println_with_prefix!("If you wish to use systemd-boot, run systemd-boot-friend init.");
+        println_with_prefix!("Or, if your ESP mountpoint is not at ESP_MOUNTPOINT, please edit /etc/systemd-boot-friend-rs.conf.");
+
+        return Err(anyhow!("{} not found", install_path.display()));
+    }
+    let (kernel_version, distro_name, kernel_flavor) = split_kernel_name(kernel_name)?;
     // generate the path to the source files
     println_with_prefix!(
         "Installing {} to {} ...",
@@ -135,17 +145,13 @@ fn install_kernel(kernel_name: &str, install_path: &Path) -> Result<()> {
     );
     let src_vmlinuz = Path::new(&vmlinuz_path);
     let src_initramfs = Path::new(&initramfs_path);
+    let src_ucode = Path::new("/boot/intel-ucode.img");
     // Copy the source files to the `install_path` using specific
     // filename format, remove the version parts of the files
     if src_vmlinuz.exists() {
         fs::copy(
             &src_vmlinuz,
-            &format!(
-                "{}vmlinuz-{}-{}",
-                install_path.display(),
-                distro_name,
-                kernel_flavor
-            ),
+            install_path.join(format!("vmlinuz-{}-{}", distro_name, kernel_flavor)),
         )?;
     } else {
         return Err(anyhow!("Kernel file not found"));
@@ -154,15 +160,16 @@ fn install_kernel(kernel_name: &str, install_path: &Path) -> Result<()> {
     if src_initramfs.exists() {
         fs::copy(
             &src_initramfs,
-            &format!(
-                "{}initramfs-{}-{}.img",
-                install_path.display(),
-                distro_name,
-                kernel_flavor
-            ),
+            install_path.join(format!("initramfs-{}-{}.img", distro_name, kernel_flavor)),
         )?;
     } else {
         return Err(anyhow!("Initramfs not found"));
+    }
+
+    // copy Intel ucode if exists
+    if src_ucode.exists() {
+        println_with_prefix!("intel-ucode detected. Installing ...");
+        fs::copy(&src_ucode, install_path.join("intel-ucode.img"))?;
     }
 
     Ok(())
@@ -181,10 +188,9 @@ fn install_specific_kernel_in_list(install_path: &Path, n: usize) -> Result<()> 
 
 fn install_newest_kernel(install_path: &Path) -> Result<()> {
     println_with_prefix!("Installing the newest kernel ...");
-    let kernels = list_kernels()?;
     // Install the last one in the kernel list as the list
     // has already been sorted by filename and version
-    install_kernel(&kernels[0], install_path)?;
+    install_kernel(&list_kernels()?[0], install_path)?;
 
     Ok(())
 }
@@ -204,9 +210,59 @@ fn ask_for_kernel(install_path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Create an systemd-boot entry config
+fn make_config(esp_path: &Path, bootarg: &str, force_write: bool) -> Result<()> {
+    let newest_kernel = &list_kernels()?[0];
+    let (_, distro_name, kernel_flavor) = split_kernel_name(newest_kernel)?;
+    let entry_path = esp_path.join(format!(
+        "loader/entries/{}-{}.conf",
+        distro_name, kernel_flavor
+    ));
+    // do not override existed entry file until forced to do so
+    if entry_path.exists() && !force_write {
+        println_with_prefix!(
+            "{} already exists. Doing nothing on this file.",
+            entry_path.display()
+        );
+        println_with_prefix!("If you wish to override the file, specify -f and run again.");
+        return Ok(());
+    }
+    println_with_prefix!(
+        "Creating boot entry for {} at {} ...",
+        newest_kernel,
+        entry_path.display()
+    );
+    // Generate entry config
+    let title = format!("title AOSC OS ({})\n", kernel_flavor);
+    let vmlinuz = format!(
+        "linux /{}vmlinuz-{}-{}\n",
+        REL_INST_PATH, distro_name, kernel_flavor
+    );
+    // automatically detect Intel ucode and write the config
+    let mut ucode = "".to_string();
+    if esp_path
+        .join(REL_INST_PATH)
+        .join("intel-ucode.img")
+        .exists()
+    {
+        ucode = format!("initrd /{}intel-ucode.img\n", REL_INST_PATH);
+    }
+    let initramfs = format!(
+        "initrd /{}initramfs-{}-{}.img\n",
+        REL_INST_PATH, distro_name, kernel_flavor
+    );
+    let options = format!("options {}", bootarg);
+    let content = title + &vmlinuz + &ucode + &initramfs + &options;
+
+    let mut entry = fs::File::create(entry_path)?;
+    entry.write(&content.as_bytes())?;
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let config = read_conf()?;
-    let install_path = Path::new(&config.esp_mountpoint).join(REL_INST_PATH);
+    let install_path = config.esp_mountpoint.join(REL_INST_PATH);
     let matches: Interface = from_env();
     if matches.version {
         println_with_prefix!(env!("CARGO_PKG_VERSION"));
@@ -215,7 +271,12 @@ fn main() -> Result<()> {
     // Switch table
     match matches.nested {
         Some(s) => match s {
-            SubCommandEnum::Init(_) => init(&install_path, &config.esp_mountpoint)?,
+            SubCommandEnum::Init(_) => {
+                init(&install_path, &config.esp_mountpoint, &config.bootarg)?
+            }
+            SubCommandEnum::MakeConf(args) => {
+                make_config(&config.esp_mountpoint, &config.bootarg, args.force)?
+            }
             SubCommandEnum::List(_) => print_kernels()?,
             SubCommandEnum::InstallKernel(args) => {
                 if let Some(n) = args.target {
