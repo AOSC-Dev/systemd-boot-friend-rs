@@ -2,6 +2,7 @@ use anyhow::{anyhow, Result};
 use argh::from_env;
 use cli::{Interface, SubCommandEnum};
 use dialoguer::{theme::ColorfulTheme, Select};
+use kernel::Kernel;
 use semver::Version;
 use serde::Deserialize;
 use std::{
@@ -10,7 +11,6 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
-use kernel::Kernel;
 
 mod cli;
 mod kernel;
@@ -69,13 +69,7 @@ fn list_kernels() -> Result<Vec<Kernel>> {
     let mut kernels_list = Vec::new();
     for kernel in kernels {
         let kernel_name = kernel.unwrap().file_name().into_string().unwrap();
-        let (kernel_version, distro_name, kernel_flavor) = split_kernel_name(&kernel_name)?;
-        let k = Kernel {
-            version: Version::parse(kernel_version)?,
-            distro: distro_name.to_string(),
-            flavor: kernel_flavor.to_string(),
-        };
-        kernels_list.push(k);
+        kernels_list.push(parse_kernel_name(&kernel_name)?);
     }
     // Sort the vector, thus the kernel filenames are
     // arranged with versions from older to newer
@@ -94,7 +88,7 @@ fn print_kernels() -> Result<()> {
     Ok(())
 }
 
-fn split_kernel_name(kernel_name: &str) -> Result<(&str, &str, &str)> {
+fn parse_kernel_name(kernel_name: &str) -> Result<Kernel> {
     // Split the kernel filename into 3 parts in order to determine
     // the version, name and the flavor of the kernel
     let mut splitted_kernel_name = kernel_name.splitn(3, '-');
@@ -105,7 +99,11 @@ fn split_kernel_name(kernel_name: &str) -> Result<(&str, &str, &str)> {
         (kernel_version, distro_name, kernel_flavor) = splitted_kernel_name,
         "Invalid kernel filename"
     );
-    Ok((kernel_version, distro_name, kernel_flavor))
+    Ok(Kernel {
+        version: Version::parse(kernel_version)?,
+        distro: distro_name.to_string(),
+        flavor: kernel_flavor.to_string(),
+    })
 }
 
 /// Install a specific kernel to the esp using the given position in the kernel list
@@ -145,11 +143,10 @@ fn ask_for_kernel(install_path: &Path) -> Result<()> {
 
 /// Create a systemd-boot entry config
 fn make_config(esp_path: &Path, bootarg: &str, force_write: bool) -> Result<()> {
-    let newest_kernel = &list_kernels()?[0].get_name();
-    let (_, distro_name, kernel_flavor) = split_kernel_name(&newest_kernel)?;
+    let newest_kernel = &list_kernels()?[0];
     let entry_path = esp_path.join(format!(
         "loader/entries/{}-{}.conf",
-        distro_name, kernel_flavor
+        newest_kernel.distro, newest_kernel.flavor
     ));
     // do not override existed entry file until forced to do so
     if entry_path.exists() && !force_write {
@@ -166,10 +163,10 @@ fn make_config(esp_path: &Path, bootarg: &str, force_write: bool) -> Result<()> 
         entry_path.display()
     );
     // Generate entry config
-    let title = format!("title AOSC OS ({})\n", kernel_flavor);
+    let title = format!("title AOSC OS ({})\n", newest_kernel.flavor);
     let vmlinuz = format!(
         "linux /{}vmlinuz-{}-{}\n",
-        REL_INST_PATH, distro_name, kernel_flavor
+        REL_INST_PATH, newest_kernel.distro, newest_kernel.flavor
     );
     // automatically detect Intel ucode and write the config
     let mut ucode = "".to_string();
@@ -182,7 +179,7 @@ fn make_config(esp_path: &Path, bootarg: &str, force_write: bool) -> Result<()> 
     }
     let initramfs = format!(
         "initrd /{}initramfs-{}-{}.img\n",
-        REL_INST_PATH, distro_name, kernel_flavor
+        REL_INST_PATH, newest_kernel.distro, newest_kernel.flavor
     );
     let options = format!("options {}", bootarg);
     let content = title + &vmlinuz + &ucode + &initramfs + &options;
@@ -215,15 +212,7 @@ fn main() -> Result<()> {
                 if let Some(n) = args.target {
                     match n.parse::<usize>() {
                         Ok(num) => install_specific_kernel_in_list(&install_path, num - 1)?,
-                        Err(_) => {
-                            let (kernel_version, distro_name, kernel_flavor) = split_kernel_name(&n)?;
-                            let k = Kernel {
-                                version: Version::parse(kernel_version)?,
-                                distro: distro_name.to_string(),
-                                flavor: kernel_flavor.to_string(),
-                            };
-                            k.install(&install_path)?
-                        },
+                        Err(_) => parse_kernel_name(&n)?.install(&install_path)?,
                     }
                 } else {
                     install_newest_kernel(&install_path)?

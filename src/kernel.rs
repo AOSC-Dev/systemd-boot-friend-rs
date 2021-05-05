@@ -3,6 +3,7 @@ use anyhow::{anyhow, Result};
 use semver::Version;
 use std::{fmt, fs, path::Path};
 
+/// A kernel struct for parsing kernel filenames
 pub struct Kernel {
     pub version: Version,
     pub distro: String,
@@ -36,6 +37,7 @@ impl fmt::Display for Kernel {
 }
 
 impl Kernel {
+    /// Get the full name of the kernel
     pub fn get_name(&self) -> String {
         format!("{}-{}-{}", self.version, self.distro, self.flavor)
     }
