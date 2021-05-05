@@ -145,7 +145,7 @@ impl Kernel {
         let content = title + &vmlinuz + &ucode + &initramfs + &options;
 
         let mut entry = fs::File::create(entry_path)?;
-        entry.write(&content.as_bytes())?;
+        entry.write_all(&content.as_bytes())?;
 
         Ok(())
     }
