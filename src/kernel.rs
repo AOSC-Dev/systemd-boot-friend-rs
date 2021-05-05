@@ -3,6 +3,9 @@ use anyhow::{anyhow, Result};
 use semver::Version;
 use std::{fmt, fs, path::Path};
 
+const SRC_PATH: &str = "/boot/";
+const UCODE_PATH: &str = "/boot/intel-ucode.img";
+
 /// A kernel struct for parsing kernel filenames
 pub struct Kernel {
     pub version: Version,
@@ -58,16 +61,16 @@ impl Kernel {
             install_path.display()
         );
         let vmlinuz_path = format!(
-            "/boot/vmlinuz-{}-{}-{}",
-            self.version, self.distro, self.flavor
+            "{}vmlinuz-{}-{}-{}",
+            SRC_PATH, self.version, self.distro, self.flavor
         );
         let initramfs_path = format!(
-            "/boot/initramfs-{}-{}-{}.img",
-            self.version, self.distro, self.flavor
+            "{}initramfs-{}-{}-{}.img",
+            SRC_PATH, self.version, self.distro, self.flavor
         );
         let src_vmlinuz = Path::new(&vmlinuz_path);
         let src_initramfs = Path::new(&initramfs_path);
-        let src_ucode = Path::new("/boot/intel-ucode.img");
+        let src_ucode = Path::new(UCODE_PATH);
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
         if src_vmlinuz.exists() {
