@@ -36,7 +36,7 @@ impl Eq for Kernel {}
 
 impl fmt::Display for Kernel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}-{}-{}", self.version, self.distro, self.flavor)
+        write!(f, "{}", self.get_name())
     }
 }
 
@@ -61,7 +61,7 @@ impl Kernel {
     }
 
     /// Get the full name of the kernel
-    pub fn get_name(&self) -> String {
+    fn get_name(&self) -> String {
         format!("{}-{}-{}", self.version, self.distro, self.flavor)
     }
 
