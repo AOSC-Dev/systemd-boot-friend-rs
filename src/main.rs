@@ -18,6 +18,7 @@ mod macros;
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const REL_INST_PATH: &str = "EFI/aosc/";
+const MODULES_PATH: &str = "/usr/lib/modules/";
 
 #[derive(Debug, Deserialize)]
 struct Config {
@@ -65,7 +66,7 @@ fn init(install_path: &Path, esp_path: &Path, bootarg: &str) -> Result<()> {
 /// Generate a sorted vector of kernel filenames
 fn list_kernels() -> Result<Vec<Kernel>> {
     // read /usr/lib/modules to get kernel filenames
-    let kernels = fs::read_dir("/usr/lib/modules")?;
+    let kernels = fs::read_dir(MODULES_PATH)?;
     let mut kernels_list = Vec::new();
     for kernel in kernels {
         let kernel_name = kernel.unwrap().file_name().into_string().unwrap();
