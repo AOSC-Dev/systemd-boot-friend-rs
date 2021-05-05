@@ -1,4 +1,4 @@
-use crate::println_with_prefix;
+use crate::{println_with_prefix, yield_into};
 use anyhow::{anyhow, Result};
 use semver::Version;
 use std::{fmt, fs, io::Write, path::Path};
@@ -41,6 +41,25 @@ impl fmt::Display for Kernel {
 }
 
 impl Kernel {
+    /// Parse a kernel filename
+    pub fn parse(kernel_name: &str) -> Result<Self> {
+        // Split the kernel filename into 3 parts in order to determine
+        // the version, name and the flavor of the kernel
+        let mut splitted_kernel_name = kernel_name.splitn(3, '-');
+        let kernel_version;
+        let distro_name;
+        let kernel_flavor;
+        yield_into!(
+            (kernel_version, distro_name, kernel_flavor) = splitted_kernel_name,
+            "Invalid kernel filename"
+        );
+        Ok(Kernel {
+            version: Version::parse(kernel_version)?,
+            distro: distro_name.to_string(),
+            flavor: kernel_flavor.to_string(),
+        })
+    }
+
     /// Get the full name of the kernel
     pub fn get_name(&self) -> String {
         format!("{}-{}-{}", self.version, self.distro, self.flavor)

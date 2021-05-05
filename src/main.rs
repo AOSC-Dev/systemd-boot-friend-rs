@@ -3,7 +3,6 @@ use argh::from_env;
 use cli::{Interface, SubCommandEnum};
 use dialoguer::{theme::ColorfulTheme, Select};
 use kernel::Kernel;
-use semver::Version;
 use serde::Deserialize;
 use std::{
     fs,
@@ -69,7 +68,7 @@ fn list_kernels() -> Result<Vec<Kernel>> {
     let mut kernels_list = Vec::new();
     for kernel in kernels {
         let kernel_name = kernel.unwrap().file_name().into_string().unwrap();
-        kernels_list.push(parse_kernel_name(&kernel_name)?);
+        kernels_list.push(Kernel::parse(&kernel_name)?);
     }
     // Sort the vector, thus the kernel filenames are
     // arranged with versions from older to newer
@@ -88,24 +87,6 @@ fn print_kernels() -> Result<()> {
     Ok(())
 }
 
-fn parse_kernel_name(kernel_name: &str) -> Result<Kernel> {
-    // Split the kernel filename into 3 parts in order to determine
-    // the version, name and the flavor of the kernel
-    let mut splitted_kernel_name = kernel_name.splitn(3, '-');
-    let kernel_version;
-    let distro_name;
-    let kernel_flavor;
-    yield_into!(
-        (kernel_version, distro_name, kernel_flavor) = splitted_kernel_name,
-        "Invalid kernel filename"
-    );
-    Ok(Kernel {
-        version: Version::parse(kernel_version)?,
-        distro: distro_name.to_string(),
-        flavor: kernel_flavor.to_string(),
-    })
-}
-
 /// Default behavior when calling without any subcommands
 fn ask_for_kernel(install_path: &Path) -> Result<()> {
     let kernels = list_kernels()?;
@@ -121,6 +102,7 @@ fn ask_for_kernel(install_path: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Ask for the kernel to write the entry config
 fn ask_for_config(
     install_path: &Path,
     esp_path: &Path,
@@ -135,7 +117,9 @@ fn ask_for_config(
         .default(0)
         .interact()?;
 
+    // make sure the kernel is present at REL_INST_PATH
     kernels[n].install(install_path)?;
+    // generate the entry config
     kernels[n].make_config(esp_path, bootarg, force_write)?;
 
     Ok(())
@@ -166,7 +150,7 @@ fn main() -> Result<()> {
                 if let Some(n) = args.target {
                     match n.parse::<usize>() {
                         Ok(num) => list_kernels()?[num].install(&install_path)?,
-                        Err(_) => parse_kernel_name(&n)?.install(&install_path)?,
+                        Err(_) => Kernel::parse(&n)?.install(&install_path)?,
                     }
                 } else {
                     list_kernels()?[0].install(&install_path)?
