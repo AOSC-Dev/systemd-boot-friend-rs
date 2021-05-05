@@ -10,12 +10,14 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
+use kernel::Kernel;
 
 mod cli;
+mod kernel;
+mod macros;
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const REL_INST_PATH: &str = "EFI/aosc/";
-const OUTPUT_PREFIX: &str = "\u{001b}[1m[systemd-boot-friend]\u{001b}[0m";
 
 #[derive(Debug, Deserialize)]
 struct Config {
@@ -23,23 +25,6 @@ struct Config {
     esp_mountpoint: PathBuf,
     #[serde(rename = "BOOTARG")]
     bootarg: String,
-}
-
-macro_rules! println_with_prefix {
-    ($($arg:tt)+) => {
-        print!("{} ", OUTPUT_PREFIX);
-        println!($($arg)+);
-    };
-}
-
-macro_rules! yield_into {
-    { ( $x:ident ) = $v:expr, $e:expr } => {
-        $x = $v.next().ok_or_else(|| anyhow!("{}", $e))?;
-    };
-    { ( $x:ident, $($y:ident),+ ) = $v:expr, $e:expr } => {
-        $x = $v.next().ok_or_else(|| anyhow!("{}", $e))?;
-        yield_into!(($($y),+) = $v, $e);
-    }
 }
 
 /// Reads the configuration file at CONF_PATH
@@ -78,20 +63,26 @@ fn init(install_path: &Path, esp_path: &Path, bootarg: &str) -> Result<()> {
 }
 
 /// Generate a sorted vector of kernel filenames
-fn list_kernels() -> Result<Vec<String>> {
+fn list_kernels() -> Result<Vec<Kernel>> {
     // read /usr/lib/modules to get kernel filenames
     let kernels = fs::read_dir("/usr/lib/modules")?;
     let mut kernels_list = Vec::new();
     for kernel in kernels {
-        kernels_list.push(Version::parse(
-            &kernel.unwrap().file_name().into_string().unwrap(),
-        )?);
+        let kernel_name = kernel.unwrap().file_name().into_string().unwrap();
+        let (kernel_version, distro_name, kernel_flavor) = split_kernel_name(&kernel_name)?;
+        let k = Kernel {
+            version: Version::parse(kernel_version)?,
+            distro: distro_name.to_string(),
+            flavor: kernel_flavor.to_string(),
+        };
+        kernels_list.push(k);
     }
     // Sort the vector, thus the kernel filenames are
     // arranged with versions from older to newer
     kernels_list.sort();
+    kernels_list.reverse();
 
-    Ok(kernels_list.iter().map(|k| k.to_string()).rev().collect())
+    Ok(kernels_list)
 }
 
 fn print_kernels() -> Result<()> {
@@ -100,7 +91,6 @@ fn print_kernels() -> Result<()> {
     for (i, k) in kernels.iter().enumerate() {
         println!("[{}] {}", i + 1, k);
     }
-
     Ok(())
 }
 
@@ -118,70 +108,13 @@ fn split_kernel_name(kernel_name: &str) -> Result<(&str, &str, &str)> {
     Ok((kernel_version, distro_name, kernel_flavor))
 }
 
-/// Install a specific kernel to the esp using the given kernel filename
-fn install_kernel(kernel_name: &str, install_path: &Path) -> Result<()> {
-    // if the path does not exist, ask the user for initializing friend
-    if !install_path.exists() {
-        println_with_prefix!("{} does not exist. Doing nothing.", install_path.display());
-        println_with_prefix!("If you wish to use systemd-boot, run systemd-boot-friend init.");
-        println_with_prefix!("Or, if your ESP mountpoint is not at ESP_MOUNTPOINT, please edit /etc/systemd-boot-friend-rs.conf.");
-
-        return Err(anyhow!("{} not found", install_path.display()));
-    }
-    let (kernel_version, distro_name, kernel_flavor) = split_kernel_name(kernel_name)?;
-    // generate the path to the source files
-    println_with_prefix!(
-        "Installing {} to {} ...",
-        kernel_name,
-        install_path.display()
-    );
-    let vmlinuz_path = format!(
-        "/boot/vmlinuz-{}-{}-{}",
-        kernel_version, distro_name, kernel_flavor
-    );
-    let initramfs_path = format!(
-        "/boot/initramfs-{}-{}-{}.img",
-        kernel_version, distro_name, kernel_flavor
-    );
-    let src_vmlinuz = Path::new(&vmlinuz_path);
-    let src_initramfs = Path::new(&initramfs_path);
-    let src_ucode = Path::new("/boot/intel-ucode.img");
-    // Copy the source files to the `install_path` using specific
-    // filename format, remove the version parts of the files
-    if src_vmlinuz.exists() {
-        fs::copy(
-            &src_vmlinuz,
-            install_path.join(format!("vmlinuz-{}-{}", distro_name, kernel_flavor)),
-        )?;
-    } else {
-        return Err(anyhow!("Kernel file not found"));
-    }
-
-    if src_initramfs.exists() {
-        fs::copy(
-            &src_initramfs,
-            install_path.join(format!("initramfs-{}-{}.img", distro_name, kernel_flavor)),
-        )?;
-    } else {
-        return Err(anyhow!("Initramfs not found"));
-    }
-
-    // copy Intel ucode if exists
-    if src_ucode.exists() {
-        println_with_prefix!("intel-ucode detected. Installing ...");
-        fs::copy(&src_ucode, install_path.join("intel-ucode.img"))?;
-    }
-
-    Ok(())
-}
-
 /// Install a specific kernel to the esp using the given position in the kernel list
 fn install_specific_kernel_in_list(install_path: &Path, n: usize) -> Result<()> {
     let kernels = list_kernels()?;
     if n >= kernels.len() {
         return Err(anyhow!("Chosen kernel index out of bound"));
     }
-    install_kernel(&kernels[n], install_path)?;
+    kernels[n].install(install_path)?;
 
     Ok(())
 }
@@ -190,7 +123,7 @@ fn install_newest_kernel(install_path: &Path) -> Result<()> {
     println_with_prefix!("Installing the newest kernel ...");
     // Install the last one in the kernel list as the list
     // has already been sorted by filename and version
-    install_kernel(&list_kernels()?[0], install_path)?;
+    list_kernels()?[0].install(install_path)?;
 
     Ok(())
 }
@@ -212,8 +145,8 @@ fn ask_for_kernel(install_path: &Path) -> Result<()> {
 
 /// Create a systemd-boot entry config
 fn make_config(esp_path: &Path, bootarg: &str, force_write: bool) -> Result<()> {
-    let newest_kernel = &list_kernels()?[0];
-    let (_, distro_name, kernel_flavor) = split_kernel_name(newest_kernel)?;
+    let newest_kernel = &list_kernels()?[0].get_name();
+    let (_, distro_name, kernel_flavor) = split_kernel_name(&newest_kernel)?;
     let entry_path = esp_path.join(format!(
         "loader/entries/{}-{}.conf",
         distro_name, kernel_flavor
@@ -282,7 +215,15 @@ fn main() -> Result<()> {
                 if let Some(n) = args.target {
                     match n.parse::<usize>() {
                         Ok(num) => install_specific_kernel_in_list(&install_path, num - 1)?,
-                        Err(_) => install_kernel(&n, &install_path)?,
+                        Err(_) => {
+                            let (kernel_version, distro_name, kernel_flavor) = split_kernel_name(&n)?;
+                            let k = Kernel {
+                                version: Version::parse(kernel_version)?,
+                                distro: distro_name.to_string(),
+                                flavor: kernel_flavor.to_string(),
+                            };
+                            k.install(&install_path)?
+                        },
                     }
                 } else {
                     install_newest_kernel(&install_path)?
