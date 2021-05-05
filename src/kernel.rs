@@ -1,8 +1,9 @@
 use crate::println_with_prefix;
 use anyhow::{anyhow, Result};
 use semver::Version;
-use std::{fmt, fs, path::Path};
+use std::{fmt, fs, io::Write, path::Path};
 
+const REL_INST_PATH: &str = "EFI/aosc/";
 const SRC_PATH: &str = "/boot/";
 const UCODE_PATH: &str = "/boot/intel-ucode.img";
 
@@ -44,6 +45,7 @@ impl Kernel {
     pub fn get_name(&self) -> String {
         format!("{}-{}-{}", self.version, self.distro, self.flavor)
     }
+
     /// Install a specific kernel to the esp using the given kernel filename
     pub fn install(&self, install_path: &Path) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend
@@ -96,6 +98,54 @@ impl Kernel {
             println_with_prefix!("intel-ucode detected. Installing ...");
             fs::copy(&src_ucode, install_path.join("intel-ucode.img"))?;
         }
+
+        Ok(())
+    }
+
+    /// Create a systemd-boot entry config
+    pub fn make_config(&self, esp_path: &Path, bootarg: &str, force_write: bool) -> Result<()> {
+        let entry_path = esp_path.join(format!(
+            "loader/entries/{}-{}.conf",
+            self.distro, self.flavor
+        ));
+        // do not override existed entry file until forced to do so
+        if entry_path.exists() && !force_write {
+            println_with_prefix!(
+                "{} already exists. Doing nothing on this file.",
+                entry_path.display()
+            );
+            println_with_prefix!("If you wish to override the file, specify -f and run again.");
+            return Ok(());
+        }
+        println_with_prefix!(
+            "Creating boot entry for {} at {} ...",
+            self,
+            entry_path.display()
+        );
+        // Generate entry config
+        let title = format!("title AOSC OS ({})\n", self.flavor);
+        let vmlinuz = format!(
+            "linux /{}vmlinuz-{}-{}\n",
+            REL_INST_PATH, self.distro, self.flavor
+        );
+        // automatically detect Intel ucode and write the config
+        let mut ucode = "".to_string();
+        if esp_path
+            .join(REL_INST_PATH)
+            .join("intel-ucode.img")
+            .exists()
+        {
+            ucode = format!("initrd /{}intel-ucode.img\n", REL_INST_PATH);
+        }
+        let initramfs = format!(
+            "initrd /{}initramfs-{}-{}.img\n",
+            REL_INST_PATH, self.distro, self.flavor
+        );
+        let options = format!("options {}", bootarg);
+        let content = title + &vmlinuz + &ucode + &initramfs + &options;
+
+        let mut entry = fs::File::create(entry_path)?;
+        entry.write(&content.as_bytes())?;
 
         Ok(())
     }

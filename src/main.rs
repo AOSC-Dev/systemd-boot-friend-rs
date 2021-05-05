@@ -7,7 +7,6 @@ use semver::Version;
 use serde::Deserialize;
 use std::{
     fs,
-    io::Write,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -54,11 +53,11 @@ fn init(install_path: &Path, esp_path: &Path, bootarg: &str) -> Result<()> {
     // create folder structure
     println_with_prefix!("Creating folder structure for friend ...");
     fs::create_dir_all(install_path)?;
+    let newest_kernel = &list_kernels()?[0];
     // install the newest kernel
-    install_newest_kernel(install_path)?;
-
+    newest_kernel.install(install_path)?;
     // Create systemd-boot entry config
-    make_config(esp_path, bootarg, true)?;
+    newest_kernel.make_config(esp_path, bootarg, true)?;
 
     Ok(())
 }
@@ -107,26 +106,6 @@ fn parse_kernel_name(kernel_name: &str) -> Result<Kernel> {
     })
 }
 
-/// Install a specific kernel to the esp using the given position in the kernel list
-fn install_specific_kernel_in_list(install_path: &Path, n: usize) -> Result<()> {
-    let kernels = list_kernels()?;
-    if n >= kernels.len() {
-        return Err(anyhow!("Chosen kernel index out of bound"));
-    }
-    kernels[n].install(install_path)?;
-
-    Ok(())
-}
-
-fn install_newest_kernel(install_path: &Path) -> Result<()> {
-    println_with_prefix!("Installing the newest kernel ...");
-    // Install the last one in the kernel list as the list
-    // has already been sorted by filename and version
-    list_kernels()?[0].install(install_path)?;
-
-    Ok(())
-}
-
 /// Default behavior when calling without any subcommands
 fn ask_for_kernel(install_path: &Path) -> Result<()> {
     let kernels = list_kernels()?;
@@ -137,56 +116,27 @@ fn ask_for_kernel(install_path: &Path) -> Result<()> {
         .default(0)
         .interact()?;
 
-    install_specific_kernel_in_list(install_path, n)?;
+    kernels[n].install(install_path)?;
 
     Ok(())
 }
 
-/// Create a systemd-boot entry config
-fn make_config(esp_path: &Path, bootarg: &str, force_write: bool) -> Result<()> {
-    let newest_kernel = &list_kernels()?[0];
-    let entry_path = esp_path.join(format!(
-        "loader/entries/{}-{}.conf",
-        newest_kernel.distro, newest_kernel.flavor
-    ));
-    // do not override existed entry file until forced to do so
-    if entry_path.exists() && !force_write {
-        println_with_prefix!(
-            "{} already exists. Doing nothing on this file.",
-            entry_path.display()
-        );
-        println_with_prefix!("If you wish to override the file, specify -f and run again.");
-        return Ok(());
-    }
-    println_with_prefix!(
-        "Creating boot entry for {} at {} ...",
-        newest_kernel,
-        entry_path.display()
-    );
-    // Generate entry config
-    let title = format!("title AOSC OS ({})\n", newest_kernel.flavor);
-    let vmlinuz = format!(
-        "linux /{}vmlinuz-{}-{}\n",
-        REL_INST_PATH, newest_kernel.distro, newest_kernel.flavor
-    );
-    // automatically detect Intel ucode and write the config
-    let mut ucode = "".to_string();
-    if esp_path
-        .join(REL_INST_PATH)
-        .join("intel-ucode.img")
-        .exists()
-    {
-        ucode = format!("initrd /{}intel-ucode.img\n", REL_INST_PATH);
-    }
-    let initramfs = format!(
-        "initrd /{}initramfs-{}-{}.img\n",
-        REL_INST_PATH, newest_kernel.distro, newest_kernel.flavor
-    );
-    let options = format!("options {}", bootarg);
-    let content = title + &vmlinuz + &ucode + &initramfs + &options;
+fn ask_for_config(
+    install_path: &Path,
+    esp_path: &Path,
+    bootarg: &str,
+    force_write: bool,
+) -> Result<()> {
+    let kernels = list_kernels()?;
+    // build dialoguer Select for kernel selection
+    let theme = ColorfulTheme::default();
+    let n = Select::with_theme(&theme)
+        .items(&kernels)
+        .default(0)
+        .interact()?;
 
-    let mut entry = fs::File::create(entry_path)?;
-    entry.write(&content.as_bytes())?;
+    kernels[n].install(install_path)?;
+    kernels[n].make_config(esp_path, bootarg, force_write)?;
 
     Ok(())
 }
@@ -205,18 +155,21 @@ fn main() -> Result<()> {
             SubCommandEnum::Init(_) => {
                 init(&install_path, &config.esp_mountpoint, &config.bootarg)?
             }
-            SubCommandEnum::MakeConf(args) => {
-                make_config(&config.esp_mountpoint, &config.bootarg, args.force)?
-            }
+            SubCommandEnum::MakeConf(args) => ask_for_config(
+                &install_path,
+                &config.esp_mountpoint,
+                &config.bootarg,
+                args.force,
+            )?,
             SubCommandEnum::List(_) => print_kernels()?,
             SubCommandEnum::InstallKernel(args) => {
                 if let Some(n) = args.target {
                     match n.parse::<usize>() {
-                        Ok(num) => install_specific_kernel_in_list(&install_path, num - 1)?,
+                        Ok(num) => list_kernels()?[num].install(&install_path)?,
                         Err(_) => parse_kernel_name(&n)?.install(&install_path)?,
                     }
                 } else {
-                    install_newest_kernel(&install_path)?
+                    list_kernels()?[0].install(&install_path)?
                 }
             }
         },
