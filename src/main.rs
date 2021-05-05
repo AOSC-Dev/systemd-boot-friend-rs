@@ -149,7 +149,7 @@ fn main() -> Result<()> {
             SubCommandEnum::InstallKernel(args) => {
                 if let Some(n) = args.target {
                     match n.parse::<usize>() {
-                        Ok(num) => list_kernels()?[num].install(&install_path)?,
+                        Ok(num) => list_kernels()?[num - 1].install(&install_path)?,
                         Err(_) => Kernel::parse(&n)?.install(&install_path)?,
                     }
                 } else {
