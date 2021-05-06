@@ -148,7 +148,7 @@ impl Kernel {
             REL_INST_PATH, self.distro, self.flavor
         );
         // automatically detect Intel ucode and write the config
-        let mut ucode = "".to_string();
+        let mut ucode = String::new();
         if esp_path
             .join(REL_INST_PATH)
             .join("intel-ucode.img")
