@@ -8,6 +8,7 @@ const SRC_PATH: &str = "/boot/";
 const UCODE_PATH: &str = "/boot/intel-ucode.img";
 
 /// A kernel struct for parsing kernel filenames
+#[derive(Eq, PartialEq)]
 pub struct Kernel {
     pub version: Version,
     pub distro: String,
@@ -25,14 +26,6 @@ impl PartialOrd for Kernel {
         Some(self.cmp(other))
     }
 }
-
-impl PartialEq for Kernel {
-    fn eq(&self, other: &Self) -> bool {
-        self.version == other.version
-    }
-}
-
-impl Eq for Kernel {}
 
 impl fmt::Display for Kernel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
