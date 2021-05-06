@@ -36,7 +36,7 @@ fn read_conf() -> Result<Config> {
 }
 
 /// Initialize the default environment for friend
-fn init(install_path: &Path, esp_path: &Path, bootarg: &str) -> Result<()> {
+fn init(esp_path: &Path, bootarg: &str) -> Result<()> {
     // use bootctl to install systemd-boot
     println_with_prefix!("Initializing systemd-boot ...");
     Command::new("bootctl")
@@ -51,10 +51,10 @@ fn init(install_path: &Path, esp_path: &Path, bootarg: &str) -> Result<()> {
         .spawn()?;
     // create folder structure
     println_with_prefix!("Creating folder structure for friend ...");
-    fs::create_dir_all(install_path)?;
+    fs::create_dir_all(esp_path.join(REL_INST_PATH))?;
     let newest_kernel = &list_kernels()?[0];
     // install the newest kernel
-    newest_kernel.install(install_path)?;
+    newest_kernel.install(esp_path)?;
     // Create systemd-boot entry config
     newest_kernel.make_config(esp_path, bootarg, true)?;
 
@@ -88,7 +88,7 @@ fn print_kernels() -> Result<()> {
 }
 
 /// Default behavior when calling without any subcommands
-fn ask_for_kernel(install_path: &Path) -> Result<()> {
+fn ask_for_kernel(esp_path: &Path) -> Result<()> {
     let kernels = list_kernels()?;
     // build dialoguer Select for kernel selection
     let theme = ColorfulTheme::default();
@@ -97,14 +97,13 @@ fn ask_for_kernel(install_path: &Path) -> Result<()> {
         .default(0)
         .interact()?;
 
-    kernels[n].install(install_path)?;
+    kernels[n].install(esp_path)?;
 
     Ok(())
 }
 
 /// Ask for the kernel to write the entry config
 fn ask_for_config(
-    install_path: &Path,
     esp_path: &Path,
     bootarg: &str,
     force_write: bool,
@@ -118,7 +117,7 @@ fn ask_for_config(
         .interact()?;
 
     // make sure the kernel is present at REL_INST_PATH
-    kernels[n].install(install_path)?;
+    kernels[n].install(esp_path)?;
     // generate the entry config
     kernels[n].make_config(esp_path, bootarg, force_write)?;
 
@@ -127,7 +126,6 @@ fn ask_for_config(
 
 fn main() -> Result<()> {
     let config = read_conf()?;
-    let install_path = config.esp_mountpoint.join(REL_INST_PATH);
     let matches: Interface = from_env();
     if matches.version {
         println_with_prefix!(env!("CARGO_PKG_VERSION"));
@@ -137,10 +135,9 @@ fn main() -> Result<()> {
     match matches.nested {
         Some(s) => match s {
             SubCommandEnum::Init(_) => {
-                init(&install_path, &config.esp_mountpoint, &config.bootarg)?
+                init(&config.esp_mountpoint, &config.bootarg)?
             }
             SubCommandEnum::MakeConf(args) => ask_for_config(
-                &install_path,
                 &config.esp_mountpoint,
                 &config.bootarg,
                 args.force,
@@ -149,15 +146,15 @@ fn main() -> Result<()> {
             SubCommandEnum::InstallKernel(args) => {
                 if let Some(n) = args.target {
                     match n.parse::<usize>() {
-                        Ok(num) => list_kernels()?[num - 1].install(&install_path)?,
-                        Err(_) => Kernel::parse(&n)?.install(&install_path)?,
+                        Ok(num) => list_kernels()?[num - 1].install(&config.esp_mountpoint)?,
+                        Err(_) => Kernel::parse(&n)?.install(&config.esp_mountpoint)?,
                     }
                 } else {
-                    list_kernels()?[0].install(&install_path)?
+                    list_kernels()?[0].install(&config.esp_mountpoint)?
                 }
             }
         },
-        None => ask_for_kernel(&install_path)?,
+        None => ask_for_kernel(&config.esp_mountpoint)?,
     }
 
     Ok(())

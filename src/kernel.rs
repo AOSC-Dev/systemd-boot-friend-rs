@@ -59,12 +59,13 @@ impl Kernel {
     }
 
     /// Install a specific kernel to the esp using the given kernel filename
-    pub fn install(&self, install_path: &Path) -> Result<()> {
+    pub fn install(&self, esp_path: &Path) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend
+        let install_path = esp_path.join(REL_INST_PATH);
         if !install_path.exists() {
             println_with_prefix!("{} does not exist. Doing nothing.", install_path.display());
             println_with_prefix!("If you wish to use systemd-boot, run systemd-boot-friend init.");
-            println_with_prefix!("Or, if your ESP mountpoint is not at ESP_MOUNTPOINT, please edit /etc/systemd-boot-friend-rs.conf.");
+            println_with_prefix!("Or, if your ESP mountpoint is not at \"{}\", please edit /etc/systemd-boot-friend-rs.conf.", esp_path.display());
 
             return Err(anyhow!("{} not found", install_path.display()));
         }
