@@ -8,7 +8,7 @@ const SRC_PATH: &str = "/boot/";
 const UCODE_PATH: &str = "/boot/intel-ucode.img";
 
 /// A kernel struct for parsing kernel filenames
-#[derive(Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Kernel {
     pub version: Version,
     pub distro: String,
