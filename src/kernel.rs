@@ -44,7 +44,8 @@ impl Kernel {
         let kernel_flavor;
         yield_into!(
             (kernel_version, distro_name, kernel_flavor) = splitted_kernel_name,
-            "Invalid kernel filename"
+            "Invalid kernel filename",
+            kernel_name
         );
         Ok(Kernel {
             version: Version::parse(kernel_version)?,
