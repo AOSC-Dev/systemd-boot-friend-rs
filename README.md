@@ -8,27 +8,26 @@ First initialize friend and systemd-boot, this will also
 install the newest kernel to the specific path for systemd-boot.
 
 ```bash
-# systemd-boot-friend-rs init
+systemd-boot-friend init
 ```
 
 You can also manually choose the kernel version.
 
 ```bash
-# systemd-boot-friend-rs
+systemd-boot-friend
 ```
 
 Or use subcommands
 
 ```bash
-# systemd-boot-friend-rs --help
+systemd-boot-friend --help
 ```
 
 ## Installation
 
 ```bash
 cargo build --release
-install -Dm755 target/release/systemd-boot-friend-rs /usr/local/bin/systemd-boot-friend-rs
-PREFIX=/usr/local ./install-assets.sh
+install -Dm755 target/release/systemd-boot-friend-rs /usr/local/bin/systemd-boot-friend
 ```
 
 ## Dependencies
