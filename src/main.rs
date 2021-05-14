@@ -103,11 +103,7 @@ fn ask_for_kernel(esp_path: &Path) -> Result<()> {
 }
 
 /// Ask for the kernel to write the entry config
-fn ask_for_config(
-    esp_path: &Path,
-    bootarg: &str,
-    force_write: bool,
-) -> Result<()> {
+fn ask_for_config(esp_path: &Path, bootarg: &str, force_write: bool) -> Result<()> {
     let kernels = list_kernels()?;
     // build dialoguer Select for kernel selection
     let theme = ColorfulTheme::default();
@@ -134,14 +130,10 @@ fn main() -> Result<()> {
     // Switch table
     match matches.nested {
         Some(s) => match s {
-            SubCommandEnum::Init(_) => {
-                init(&config.esp_mountpoint, &config.bootarg)?
+            SubCommandEnum::Init(_) => init(&config.esp_mountpoint, &config.bootarg)?,
+            SubCommandEnum::MakeConf(args) => {
+                ask_for_config(&config.esp_mountpoint, &config.bootarg, args.force)?
             }
-            SubCommandEnum::MakeConf(args) => ask_for_config(
-                &config.esp_mountpoint,
-                &config.bootarg,
-                args.force,
-            )?,
             SubCommandEnum::List(_) => print_kernels()?,
             SubCommandEnum::InstallKernel(args) => {
                 if let Some(n) = args.target {
