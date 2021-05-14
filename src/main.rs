@@ -126,18 +126,22 @@ fn main() -> Result<()> {
                 ask_for_config(&config.esp_mountpoint, &config.bootarg, args.force)?
             }
             SubCommandEnum::List(_) => {
-                // List available kernels
+                // list available kernels
                 for (i, k) in list_kernels()?.iter().enumerate() {
                     println!("[{}] {}", i + 1, k);
                 }
             }
             SubCommandEnum::InstallKernel(args) => {
                 if let Some(n) = args.target {
+                    // the target can be both the number in
+                    // the list and the name of the kernel
                     match n.parse::<usize>() {
                         Ok(num) => list_kernels()?[num - 1].install(&config.esp_mountpoint)?,
                         Err(_) => Kernel::parse(&n)?.install(&config.esp_mountpoint)?,
                     }
                 } else {
+                    // installs the newest kernel
+                    // when no target is given
                     list_kernels()?[0].install(&config.esp_mountpoint)?
                 }
             }
