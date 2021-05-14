@@ -64,18 +64,15 @@ fn init(esp_path: &Path, bootarg: &str) -> Result<()> {
 /// Generate a sorted vector of kernel filenames
 fn list_kernels() -> Result<Vec<Kernel>> {
     // read /usr/lib/modules to get kernel filenames
-    let kernels = fs::read_dir(MODULES_PATH)?;
-    let mut kernels_list = Vec::new();
-    for kernel in kernels {
-        let kernel_name = kernel.unwrap().file_name().into_string().unwrap();
-        kernels_list.push(Kernel::parse(&kernel_name)?);
-    }
+    let mut kernels: Vec<Kernel> = fs::read_dir(MODULES_PATH)?
+        .map(|k| Kernel::parse(&k.unwrap().file_name().into_string().unwrap()).unwrap())
+        .collect();
     // Sort the vector, thus the kernel filenames are
     // arranged with versions from older to newer
-    kernels_list.sort();
-    kernels_list.reverse();
+    kernels.sort();
+    kernels.reverse();
 
-    Ok(kernels_list)
+    Ok(kernels)
 }
 
 /// Default behavior when calling without any subcommands
