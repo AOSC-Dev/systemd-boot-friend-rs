@@ -1,7 +1,7 @@
 use argh::FromArgs;
 
 #[derive(FromArgs, Debug)]
-/// Systemd-Boot Kernel Version Selector
+/// Kernel Version Manager for systemd-boot
 pub struct Interface {
     #[argh(subcommand)]
     pub nested: Option<SubCommandEnum>,
@@ -40,7 +40,7 @@ pub struct List {}
 
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "install-kernel")]
-/// Install a specific kernel
+/// Install the specified kernel
 pub struct InstallKernel {
     #[argh(positional)]
     pub target: Option<String>,
