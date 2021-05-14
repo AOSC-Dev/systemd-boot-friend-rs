@@ -11,13 +11,14 @@ install the newest kernel to the specific path for systemd-boot.
 systemd-boot-friend init
 ```
 
-You can also manually choose the kernel version.
+You can also manually choose the kernel you would like to install.
 
 ```bash
 systemd-boot-friend
 ```
 
-Or use subcommands
+Subcommands are also supported, you may look up for them by
+executing the following command.
 
 ```bash
 systemd-boot-friend --help
