@@ -78,15 +78,6 @@ fn list_kernels() -> Result<Vec<Kernel>> {
     Ok(kernels_list)
 }
 
-fn print_kernels() -> Result<()> {
-    let kernels = list_kernels()?;
-    // print kernel filenames with numbers for users to choose
-    for (i, k) in kernels.iter().enumerate() {
-        println!("[{}] {}", i + 1, k);
-    }
-    Ok(())
-}
-
 /// Default behavior when calling without any subcommands
 fn ask_for_kernel(esp_path: &Path) -> Result<()> {
     let kernels = list_kernels()?;
@@ -134,7 +125,12 @@ fn main() -> Result<()> {
             SubCommandEnum::MakeConf(args) => {
                 ask_for_config(&config.esp_mountpoint, &config.bootarg, args.force)?
             }
-            SubCommandEnum::List(_) => print_kernels()?,
+            SubCommandEnum::List(_) => {
+                // List available kernels
+                for (i, k) in list_kernels()?.iter().enumerate() {
+                    println!("[{}] {}", i + 1, k);
+                }
+            }
             SubCommandEnum::InstallKernel(args) => {
                 if let Some(n) = args.target {
                     match n.parse::<usize>() {
