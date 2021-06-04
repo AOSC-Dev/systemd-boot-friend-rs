@@ -75,9 +75,8 @@ fn list_kernels() -> Result<Vec<Kernel>> {
         .collect::<Result<Vec<Kernel>>>()?;
 
     // Sort the vector, thus the kernel filenames are
-    // arranged with versions from older to newer
-    kernels.sort();
-    kernels.reverse();
+    // arranged with versions from newer to older
+    kernels.sort_by(|a, b| b.cmp(a));
     Ok(kernels)
 }
 
