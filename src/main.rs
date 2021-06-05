@@ -69,7 +69,7 @@ fn init(esp_path: &Path, bootarg: &str) -> Result<()> {
                     .to_str()
                     .ok_or_else(|| anyhow!("Invalid ESP_MOUNTPOINT"))?,
         )
-        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .spawn()?;
     // create folder structure
     println_with_prefix!("Creating folder structure for friend ...");
