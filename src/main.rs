@@ -45,32 +45,6 @@ fn list_kernels() -> Result<Vec<Kernel>> {
     Ok(kernels)
 }
 
-/// Initialize the default environment for friend
-fn init(esp_path: &Path, bootarg: &str) -> Result<()> {
-    // use bootctl to install systemd-boot
-    println_with_prefix!("Initializing systemd-boot ...");
-    Command::new("bootctl")
-        .arg("install")
-        .arg(
-            "--esp=".to_owned()
-                + esp_path
-                    .to_str()
-                    .ok_or_else(|| anyhow!("Invalid ESP_MOUNTPOINT"))?,
-        )
-        .stdout(Stdio::null())
-        .spawn()?;
-    // create folder structure
-    println_with_prefix!("Creating folder structure for friend ...");
-    fs::create_dir_all(esp_path.join(REL_INST_PATH))?;
-    let newest_kernel = &list_kernels()?[0];
-    // install the newest kernel
-    newest_kernel.install(esp_path)?;
-    // Create systemd-boot entry config
-    newest_kernel.make_config(esp_path, bootarg, true)?;
-
-    Ok(())
-}
-
 /// Default behavior when calling without any subcommands
 fn ask_for_kernel(esp_path: &Path) -> Result<()> {
     let kernels = list_kernels()?;
@@ -100,6 +74,30 @@ fn ask_for_config(esp_path: &Path, bootarg: &str, force_write: bool) -> Result<(
     kernels[n].install(esp_path)?;
     // generate the entry config
     kernels[n].make_config(esp_path, bootarg, force_write)?;
+
+    Ok(())
+}
+
+/// Initialize the default environment for friend
+fn init(esp_path: &Path, bootarg: &str) -> Result<()> {
+    // use bootctl to install systemd-boot
+    println_with_prefix!("Initializing systemd-boot ...");
+    Command::new("bootctl")
+        .arg("install")
+        .arg(
+            "--esp=".to_owned()
+                + esp_path
+                    .to_str()
+                    .ok_or_else(|| anyhow!("Invalid ESP_MOUNTPOINT"))?,
+        )
+        .stdout(Stdio::null())
+        .spawn()?;
+    // create folder structure
+    println_with_prefix!("Creating folder structure for friend ...");
+    fs::create_dir_all(esp_path.join(REL_INST_PATH))?;
+    // choose the kernel to install and
+    // write the entry config file
+    ask_for_config(esp_path, bootarg, false)?;
 
     Ok(())
 }
