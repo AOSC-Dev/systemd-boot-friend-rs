@@ -26,13 +26,23 @@ struct Config {
     bootarg: String,
 }
 
-/// Reads the configuration file at CONF_PATH
-fn read_conf() -> Result<Config> {
-    let content = fs::read(CONF_PATH)?;
-    // deserialize into Config struct
-    let config: Config = toml::from_slice(&content)?;
+/// Generate a sorted vector of kernel filenames
+fn list_kernels() -> Result<Vec<Kernel>> {
+    // read /usr/lib/modules to get kernel filenames
+    let mut kernels = fs::read_dir(MODULES_PATH)?
+        .map(|k| {
+            Ok(Kernel::parse(
+                &k?.file_name()
+                    .into_string()
+                    .unwrap_or_else(|_| String::new()),
+            )?)
+        })
+        .collect::<Result<Vec<Kernel>>>()?;
 
-    Ok(config)
+    // Sort the vector, thus the kernel filenames are
+    // arranged with versions from newer to older
+    kernels.sort_by(|a, b| b.cmp(a));
+    Ok(kernels)
 }
 
 /// Initialize the default environment for friend
@@ -59,25 +69,6 @@ fn init(esp_path: &Path, bootarg: &str) -> Result<()> {
     newest_kernel.make_config(esp_path, bootarg, true)?;
 
     Ok(())
-}
-
-/// Generate a sorted vector of kernel filenames
-fn list_kernels() -> Result<Vec<Kernel>> {
-    // read /usr/lib/modules to get kernel filenames
-    let mut kernels = fs::read_dir(MODULES_PATH)?
-        .map(|k| {
-            Ok(Kernel::parse(
-                &k?.file_name()
-                    .into_string()
-                    .unwrap_or_else(|_| String::new()),
-            )?)
-        })
-        .collect::<Result<Vec<Kernel>>>()?;
-
-    // Sort the vector, thus the kernel filenames are
-    // arranged with versions from newer to older
-    kernels.sort_by(|a, b| b.cmp(a));
-    Ok(kernels)
 }
 
 /// Default behavior when calling without any subcommands
@@ -114,7 +105,9 @@ fn ask_for_config(esp_path: &Path, bootarg: &str, force_write: bool) -> Result<(
 }
 
 fn main() -> Result<()> {
-    let config = read_conf()?;
+    // Read config
+    let config: Config = toml::from_slice(&fs::read(CONF_PATH)?)?;
+    // CLI
     let matches: Interface = from_env();
     if matches.version {
         println_with_prefix!(env!("CARGO_PKG_VERSION"));
