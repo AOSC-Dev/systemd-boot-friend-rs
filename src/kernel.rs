@@ -1,5 +1,6 @@
 use crate::{println_with_prefix, yield_into};
 use anyhow::{anyhow, Result};
+use dialoguer::{theme::ColorfulTheme, Confirm};
 use semver::Version;
 use std::{fmt, fs, io::Write, path::Path};
 
@@ -8,7 +9,7 @@ const SRC_PATH: &str = "/boot/";
 const UCODE_PATH: &str = "/boot/intel-ucode.img";
 
 /// A kernel struct for parsing kernel filenames
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Kernel {
     pub version: Version,
     pub distro: String,
@@ -124,12 +125,18 @@ impl Kernel {
         ));
         // do not override existed entry file until forced to do so
         if entry_path.exists() && !force_write {
-            println_with_prefix!(
-                "{} already exists. Doing nothing on this file.",
-                entry_path.display()
-            );
-            println_with_prefix!("If you wish to override the file, specify -f and run again.");
-            return Ok(());
+            let force_write = Confirm::with_theme(&ColorfulTheme::default())
+                .with_prompt(format!(
+                    "{} already exists. Override?",
+                    entry_path.display()
+                ))
+                .default(false)
+                .interact()?;
+            if !force_write {
+                println_with_prefix!("Doing nothing on this file.");
+                return Ok(());
+            }
+            self.make_config(esp_path, bootarg, force_write)?;
         }
         println_with_prefix!(
             "Creating boot entry for {} at {} ...",

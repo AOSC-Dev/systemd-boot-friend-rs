@@ -45,37 +45,16 @@ fn list_kernels() -> Result<Vec<Kernel>> {
     Ok(kernels)
 }
 
-/// Default behavior when calling without any subcommands
-fn ask_for_kernel(esp_path: &Path) -> Result<()> {
+/// Choose a kernel using dialoguer
+fn choose_kernel() -> Result<Kernel> {
     let kernels = list_kernels()?;
     // build dialoguer Select for kernel selection
-    let theme = ColorfulTheme::default();
-    let n = Select::with_theme(&theme)
+    let n = Select::with_theme(&ColorfulTheme::default())
         .items(&kernels)
         .default(0)
         .interact()?;
 
-    kernels[n].install(esp_path)?;
-
-    Ok(())
-}
-
-/// Ask for the kernel to write the entry config
-fn ask_for_config(esp_path: &Path, bootarg: &str, force_write: bool) -> Result<()> {
-    let kernels = list_kernels()?;
-    // build dialoguer Select for kernel selection
-    let theme = ColorfulTheme::default();
-    let n = Select::with_theme(&theme)
-        .items(&kernels)
-        .default(0)
-        .interact()?;
-
-    // make sure the kernel is present at REL_INST_PATH
-    kernels[n].install(esp_path)?;
-    // generate the entry config
-    kernels[n].make_config(esp_path, bootarg, force_write)?;
-
-    Ok(())
+    Ok(kernels[n].clone())
 }
 
 /// Initialize the default environment for friend
@@ -97,7 +76,9 @@ fn init(esp_path: &Path, bootarg: &str) -> Result<()> {
     fs::create_dir_all(esp_path.join(REL_INST_PATH))?;
     // choose the kernel to install and
     // write the entry config file
-    ask_for_config(esp_path, bootarg, false)?;
+    let kernel = choose_kernel()?;
+    kernel.install(esp_path)?;
+    kernel.make_config(esp_path, bootarg, false)?;
 
     Ok(())
 }
@@ -116,7 +97,9 @@ fn main() -> Result<()> {
         Some(s) => match s {
             SubCommandEnum::Init(_) => init(&config.esp_mountpoint, &config.bootarg)?,
             SubCommandEnum::MakeConf(args) => {
-                ask_for_config(&config.esp_mountpoint, &config.bootarg, args.force)?
+                let kernel = choose_kernel()?;
+                kernel.install(&config.esp_mountpoint)?;
+                kernel.make_config(&config.esp_mountpoint, &config.bootarg, args.force)?;
             }
             SubCommandEnum::List(_) => {
                 // list available kernels
@@ -139,7 +122,7 @@ fn main() -> Result<()> {
                 }
             }
         },
-        None => ask_for_kernel(&config.esp_mountpoint)?,
+        None => choose_kernel()?.install(&config.esp_mountpoint)?,
     }
 
     Ok(())
