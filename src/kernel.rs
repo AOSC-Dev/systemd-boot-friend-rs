@@ -4,6 +4,7 @@ use dialoguer::{theme::ColorfulTheme, Confirm};
 use semver::Version;
 use std::{fmt, fs, io::Write, path::Path};
 
+const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const REL_INST_PATH: &str = "EFI/aosc/";
 const SRC_PATH: &str = "/boot/";
 const UCODE_PATH: &str = "/boot/intel-ucode.img";
@@ -66,8 +67,14 @@ impl Kernel {
         let install_path = esp_path.join(REL_INST_PATH);
         if !install_path.exists() {
             println_with_prefix!("{} does not exist. Doing nothing.", install_path.display());
-            println_with_prefix!("If you wish to use systemd-boot, run systemd-boot-friend init.");
-            println_with_prefix!("Or, if your ESP mountpoint is not at \"{}\", please edit /etc/systemd-boot-friend-rs.conf.", esp_path.display());
+            println_with_prefix!(
+                "If you wish to use systemd-boot, execute `systemd-boot-friend init` first."
+            );
+            println_with_prefix!(
+                "Or, if your ESP mountpoint is not at \"{}\", please edit {}.",
+                esp_path.display(),
+                CONF_PATH
+            );
 
             return Err(anyhow!("{} not found", install_path.display()));
         }
