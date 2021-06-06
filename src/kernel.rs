@@ -124,19 +124,23 @@ impl Kernel {
             self.distro, self.flavor
         ));
         // do not override existed entry file until forced to do so
-        if entry_path.exists() && !force_write {
-            let force_write = Confirm::with_theme(&ColorfulTheme::default())
-                .with_prompt(format!(
-                    "{} already exists. Override?",
-                    entry_path.display()
-                ))
-                .default(false)
-                .interact()?;
+        if entry_path.exists() {
             if !force_write {
-                println_with_prefix!("Doing nothing on this file.");
+                let force_write = Confirm::with_theme(&ColorfulTheme::default())
+                    .with_prompt(format!(
+                        "{} already exists. Override?",
+                        entry_path.display()
+                    ))
+                    .default(false)
+                    .interact()?;
+                if !force_write {
+                    println_with_prefix!("Doing nothing on this file.");
+                    return Ok(());
+                }
+                self.make_config(esp_path, bootarg, force_write)?;
                 return Ok(());
             }
-            self.make_config(esp_path, bootarg, force_write)?;
+            println_with_prefix!("Overriding {} ...", entry_path.display());
         }
         println_with_prefix!(
             "Creating boot entry for {} at {} ...",
