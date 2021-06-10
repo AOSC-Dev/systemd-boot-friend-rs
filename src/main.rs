@@ -98,6 +98,7 @@ fn main() -> Result<()> {
             SubCommandEnum::Init(_) => init(&config.esp_mountpoint, &config.bootarg)?,
             SubCommandEnum::MakeConf(args) => {
                 let kernel = choose_kernel()?;
+                // make sure the kernel selected is installed
                 kernel.install(&config.esp_mountpoint)?;
                 kernel.make_config(&config.esp_mountpoint, &config.bootarg, args.force)?;
             }
