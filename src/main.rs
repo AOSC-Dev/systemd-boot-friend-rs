@@ -31,11 +31,11 @@ fn list_kernels() -> Result<Vec<Kernel>> {
     // read /usr/lib/modules to get kernel filenames
     let mut kernels = fs::read_dir(MODULES_PATH)?
         .map(|k| {
-            Ok(Kernel::parse(
+            Kernel::parse(
                 &k?.file_name()
                     .into_string()
                     .unwrap_or_else(|_| String::new()),
-            )?)
+            )
         })
         .collect::<Result<Vec<Kernel>>>()?;
 
