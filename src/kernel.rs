@@ -1,4 +1,4 @@
-use crate::{println_with_prefix, yield_into};
+use crate::*;
 use anyhow::{anyhow, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use semver::Version;
@@ -97,23 +97,24 @@ impl Kernel {
         let src_ucode = Path::new(UCODE_PATH);
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
-        if src_vmlinuz.exists() {
-            fs::copy(
-                &src_vmlinuz,
-                install_path.join(format!("vmlinuz-{}-{}", self.distro, self.flavor)),
-            )?;
-        } else {
-            return Err(anyhow!("Kernel file not found"));
-        }
-
-        if src_initramfs.exists() {
-            fs::copy(
-                &src_initramfs,
-                install_path.join(format!("initramfs-{}-{}.img", self.distro, self.flavor)),
-            )?;
-        } else {
-            return Err(anyhow!("Initramfs not found"));
-        }
+        unwrap_or_show_error!(
+            {
+                fs::copy(
+                    &src_vmlinuz,
+                    install_path.join(format!("vmlinuz-{}-{}", self.distro, self.flavor)),
+                )
+            },
+            "Unable to copy kernel file"
+        );
+        unwrap_or_show_error!(
+            {
+                fs::copy(
+                    &src_initramfs,
+                    install_path.join(format!("initramfs-{}-{}.img", self.distro, self.flavor)),
+                )
+            },
+            "Unable to copy initramfs file"
+        );
 
         // copy Intel ucode if exists
         if src_ucode.exists() {
@@ -175,9 +176,7 @@ impl Kernel {
         );
         let options = format!("options {}", bootarg);
         let content = title + &vmlinuz + &ucode + &initramfs + &options;
-
-        let mut entry = fs::File::create(entry_path)?;
-        entry.write_all(&content.as_bytes())?;
+        fs::File::create(entry_path)?.write_all(&content.as_bytes())?;
 
         Ok(())
     }
