@@ -2,7 +2,7 @@ use crate::*;
 use anyhow::{anyhow, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use semver::Version;
-use std::{fmt, fs, io::Write, path::Path};
+use std::{fmt, fs, path::Path};
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const REL_INST_PATH: &str = "EFI/aosc/";
@@ -176,7 +176,7 @@ impl Kernel {
         );
         let options = format!("options {}", bootarg);
         let content = title + &vmlinuz + &ucode + &initramfs + &options;
-        fs::File::create(entry_path)?.write_all(&content.as_bytes())?;
+        fs::write(entry_path, content)?;
 
         Ok(())
     }
