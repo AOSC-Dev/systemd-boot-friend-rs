@@ -16,7 +16,7 @@ pub enum SubCommandEnum {
     Init(Init),
     MakeConf(MakeConf),
     List(List),
-    InstallKernel(InstallKernel),
+    Install(Install),
 }
 
 #[derive(FromArgs, Debug)]
@@ -39,9 +39,9 @@ pub struct MakeConf {
 pub struct List {}
 
 #[derive(FromArgs, Debug)]
-#[argh(subcommand, name = "install-kernel")]
-/// Install the specified kernel
-pub struct InstallKernel {
+#[argh(subcommand, name = "install")]
+/// Install the kernel specified
+pub struct Install {
     #[argh(positional)]
     pub target: Option<String>,
 }
