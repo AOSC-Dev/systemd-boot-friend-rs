@@ -49,7 +49,7 @@ impl Kernel {
             "Invalid kernel filename",
             kernel_name
         );
-        Ok(Kernel {
+        Ok(Self {
             version: Version::parse(kernel_version)?,
             distro: distro_name.to_string(),
             flavor: kernel_flavor.to_string(),
