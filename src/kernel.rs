@@ -136,7 +136,7 @@ impl Kernel {
             if !force_write {
                 let force_write = Confirm::with_theme(&ColorfulTheme::default())
                     .with_prompt(format!(
-                        "{} already exists. Override?",
+                        "{} already exists. Overwrite?",
                         entry_path.display()
                     ))
                     .default(false)
@@ -148,7 +148,7 @@ impl Kernel {
                 self.make_config(esp_path, bootarg, force_write)?;
                 return Ok(());
             }
-            println_with_prefix!("Overriding {} ...", entry_path.display());
+            println_with_prefix!("Overwriting {} ...", entry_path.display());
         }
         println_with_prefix!(
             "Creating boot entry for {} at {} ...",

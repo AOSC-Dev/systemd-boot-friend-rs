@@ -28,7 +28,7 @@ pub struct Init {}
 #[argh(subcommand, name = "mkconf")]
 /// Create systemd-boot entry config
 pub struct MakeConf {
-    /// force rewrite the entry config or not
+    /// force overwrite the entry config or not
     #[argh(switch, short = 'f')]
     pub force: bool,
 }
