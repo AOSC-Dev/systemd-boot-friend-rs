@@ -109,17 +109,16 @@ fn main() -> Result<()> {
                 }
             }
             SubCommandEnum::Install(args) => {
-                if let Some(n) = args.target {
+                match args.target {
                     // the target can be both the number in
                     // the list and the name of the kernel
-                    match n.parse::<usize>() {
+                    Some(n) => match n.parse::<usize>() {
                         Ok(num) => list_kernels()?[num - 1].install(&config.esp_mountpoint)?,
                         Err(_) => Kernel::parse(&n)?.install(&config.esp_mountpoint)?,
-                    }
-                } else {
+                    },
                     // installs the newest kernel
                     // when no target is given
-                    list_kernels()?[0].install(&config.esp_mountpoint)?;
+                    None => list_kernels()?[0].install(&config.esp_mountpoint)?,
                 }
             }
         },
