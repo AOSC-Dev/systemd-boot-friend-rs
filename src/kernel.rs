@@ -8,6 +8,7 @@ const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const REL_INST_PATH: &str = "EFI/aosc/";
 const SRC_PATH: &str = "/boot/";
 const UCODE_PATH: &str = "/boot/intel-ucode.img";
+const MODULES_PATH: &str = "/usr/lib/modules/";
 
 /// A kernel struct for parsing kernel filenames
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -54,6 +55,25 @@ impl Kernel {
             distro: distro_name.to_string(),
             flavor: kernel_flavor.to_string(),
         })
+    }
+
+    /// Generate a sorted vector of kernel filenames
+    pub fn list_kernels() -> Result<Vec<Self>> {
+        // read /usr/lib/modules to get kernel filenames
+        let mut kernels = fs::read_dir(MODULES_PATH)?
+            .map(|k| {
+                Kernel::parse(
+                    &k?.file_name()
+                        .into_string()
+                        .unwrap_or_else(|_| String::new()),
+                )
+            })
+            .collect::<Result<Vec<Self>>>()?;
+
+        // Sort the vector, thus the kernel filenames are
+        // arranged with versions from newer to older
+        kernels.sort_by(|a, b| b.cmp(a));
+        Ok(kernels)
     }
 
     /// Get the full name of the kernel
