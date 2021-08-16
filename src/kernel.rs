@@ -70,6 +70,10 @@ impl Kernel {
             })
             .collect::<Result<Vec<Self>>>()?;
 
+        if kernels.is_empty() {
+            return Err(anyhow!("No kernel found"));
+        }
+
         // Sort the vector, thus the kernel filenames are
         // arranged with versions from newer to older
         kernels.sort_by(|a, b| b.cmp(a));
