@@ -5,14 +5,3 @@ macro_rules! println_with_prefix {
         eprintln!($($arg)+);
     };
 }
-
-#[macro_export]
-macro_rules! unwrap_or_show_error {
-    ($f:block, $e:expr) => {
-        let tmp = { $f };
-        if let Err(_) = tmp {
-            return Err(anyhow!("{}", $e));
-        }
-        tmp.unwrap()
-    };
-}
