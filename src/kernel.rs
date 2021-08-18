@@ -117,27 +117,17 @@ impl Kernel {
         let src_ucode = Path::new(UCODE_PATH);
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
-        unwrap_or_show_error!(
-            {
-                fs::copy(
-                    &src_vmlinuz,
-                    install_path.join(format!("vmlinuz-{}-{}", self.version, self.localversion)),
-                )
-            },
-            "Unable to copy kernel file"
-        );
-        unwrap_or_show_error!(
-            {
-                fs::copy(
-                    &src_initramfs,
-                    install_path.join(format!(
-                        "initramfs-{}-{}.img",
-                        self.version, self.localversion
-                    )),
-                )
-            },
-            "Unable to copy initramfs file"
-        );
+        fs::copy(
+            &src_vmlinuz,
+            install_path.join(format!("vmlinuz-{}-{}", self.version, self.localversion)),
+        )?;
+        fs::copy(
+            &src_initramfs,
+            install_path.join(format!(
+                "initramfs-{}-{}.img",
+                self.version, self.localversion
+            )),
+        )?;
 
         // copy Intel ucode if exists
         if src_ucode.exists() {
@@ -191,14 +181,15 @@ impl Kernel {
             REL_INST_PATH, self.version, self.localversion
         );
         // automatically detect Intel ucode and write the config
-        let mut ucode = String::new();
-        if esp_path
+        let ucode = if esp_path
             .join(REL_INST_PATH)
             .join("intel-ucode.img")
             .exists()
         {
-            ucode = format!("initrd /{}intel-ucode.img\n", REL_INST_PATH);
-        }
+            format!("initrd /{}intel-ucode.img\n", REL_INST_PATH)
+        } else {
+            String::new()
+        };
         let initramfs = format!(
             "initrd /{}initramfs-{}-{}.img\n",
             REL_INST_PATH, self.version, self.localversion
