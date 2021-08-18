@@ -185,7 +185,7 @@ impl Kernel {
             entry_path.display()
         );
         // Generate entry config
-        let title = format!("title {} {}\n", distro, self.localversion);
+        let title = format!("title {} ({})\n", distro, self.get_name());
         let vmlinuz = format!(
             "linux /{}vmlinuz-{}-{}\n",
             REL_INST_PATH, self.version, self.localversion
