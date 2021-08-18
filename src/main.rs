@@ -59,8 +59,7 @@ fn init(distro: &str, esp_path: &Path, bootarg: &str) -> Result<()> {
     // choose the kernel to install and
     // write the entry config file
     let kernel = choose_kernel()?;
-    kernel.install(esp_path)?;
-    kernel.make_config(distro, esp_path, bootarg, false)?;
+    kernel.install_and_make_config(distro, esp_path, bootarg, false)?;
 
     Ok(())
 }
@@ -87,33 +86,23 @@ fn main() -> Result<()> {
                 }
             }
             SubCommandEnum::Install(args) => {
-                match args.target {
+                let kernel = match args.target {
                     // the target can be both the number in
                     // the list and the name of the kernel
-                    Some(n) => {
-                        let kernel = match n.parse::<usize>() {
-                            Ok(num) => Kernel::list_kernels()?[num - 1].clone(),
-                            Err(_) => Kernel::parse(&n)?,
-                        };
-                        kernel.install_and_make_config(
-                            &config.distro,
-                            &config.esp_mountpoint,
-                            &config.bootarg,
-                            args.force,
-                        )?;
-                    }
-                    // installs the newest kernel
+                    Some(n) => match n.parse::<usize>() {
+                        Ok(num) => Kernel::list_kernels()?[num - 1].clone(),
+                        Err(_) => Kernel::parse(&n)?,
+                    },
+                    // install the newest kernel
                     // when no target is given
-                    None => {
-                        let kernel = &Kernel::list_kernels()?[0];
-                        kernel.install_and_make_config(
-                            &config.distro,
-                            &config.esp_mountpoint,
-                            &config.bootarg,
-                            args.force,
-                        )?
-                    }
-                }
+                    None => Kernel::list_kernels()?[0].clone(),
+                };
+                kernel.install_and_make_config(
+                    &config.distro,
+                    &config.esp_mountpoint,
+                    &config.bootarg,
+                    args.force,
+                )?;
             }
         },
         None => {
