@@ -14,8 +14,7 @@ const MODULES_PATH: &str = "/usr/lib/modules/";
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Kernel {
     pub version: Version,
-    pub distro: String,
-    pub flavor: String,
+    pub localversion: String,
 }
 
 impl Ord for Kernel {
@@ -41,19 +40,19 @@ impl Kernel {
     pub fn parse(kernel_name: &str) -> Result<Self> {
         // Split the kernel filename into 3 parts in order to determine
         // the version, name and the flavor of the kernel
-        let mut splitted_kernel_name = kernel_name.splitn(3, '-');
-        let kernel_version;
-        let distro_name;
-        let kernel_flavor;
-        yield_into!(
-            (kernel_version, distro_name, kernel_flavor) = splitted_kernel_name,
-            "Invalid kernel filename",
-            kernel_name
-        );
+        let mut splitted_kernel_name = kernel_name.splitn(2, '-');
+        let version = Version::parse(
+            splitted_kernel_name
+                .next()
+                .ok_or_else(|| anyhow!("invalid kernel filename"))?,
+        )?;
+        let localversion = splitted_kernel_name
+            .next()
+            .unwrap_or_else(|| "unknown")
+            .to_owned();
         Ok(Self {
-            version: Version::parse(kernel_version)?,
-            distro: distro_name.to_string(),
-            flavor: kernel_flavor.to_string(),
+            version,
+            localversion,
         })
     }
 
@@ -62,7 +61,7 @@ impl Kernel {
         // read /usr/lib/modules to get kernel filenames
         let mut kernels = fs::read_dir(MODULES_PATH)?
             .map(|k| {
-                Kernel::parse(
+                Self::parse(
                     &k?.file_name()
                         .into_string()
                         .unwrap_or_else(|_| String::new()),
@@ -82,7 +81,7 @@ impl Kernel {
 
     /// Get the full name of the kernel
     fn get_name(&self) -> String {
-        format!("{}-{}-{}", self.version, self.distro, self.flavor)
+        format!("{}-{}", self.version, self.localversion)
     }
 
     /// Install a specific kernel to the esp using the given kernel filename
@@ -108,13 +107,10 @@ impl Kernel {
             self.get_name(),
             install_path.display()
         );
-        let vmlinuz_path = format!(
-            "{}vmlinuz-{}-{}-{}",
-            SRC_PATH, self.version, self.distro, self.flavor
-        );
+        let vmlinuz_path = format!("{}vmlinuz-{}-{}", SRC_PATH, self.version, self.localversion);
         let initramfs_path = format!(
-            "{}initramfs-{}-{}-{}.img",
-            SRC_PATH, self.version, self.distro, self.flavor
+            "{}initramfs-{}-{}.img",
+            SRC_PATH, self.version, self.localversion
         );
         let src_vmlinuz = Path::new(&vmlinuz_path);
         let src_initramfs = Path::new(&initramfs_path);
@@ -125,7 +121,7 @@ impl Kernel {
             {
                 fs::copy(
                     &src_vmlinuz,
-                    install_path.join(format!("vmlinuz-{}-{}", self.distro, self.flavor)),
+                    install_path.join(format!("vmlinuz-{}-{}", self.version, self.localversion)),
                 )
             },
             "Unable to copy kernel file"
@@ -134,7 +130,10 @@ impl Kernel {
             {
                 fs::copy(
                     &src_initramfs,
-                    install_path.join(format!("initramfs-{}-{}.img", self.distro, self.flavor)),
+                    install_path.join(format!(
+                        "initramfs-{}-{}.img",
+                        self.version, self.localversion
+                    )),
                 )
             },
             "Unable to copy initramfs file"
@@ -150,10 +149,16 @@ impl Kernel {
     }
 
     /// Create a systemd-boot entry config
-    pub fn make_config(&self, esp_path: &Path, bootarg: &str, force_write: bool) -> Result<()> {
+    pub fn make_config(
+        &self,
+        distro: &str,
+        esp_path: &Path,
+        bootarg: &str,
+        force_write: bool,
+    ) -> Result<()> {
         let entry_path = esp_path.join(format!(
             "loader/entries/{}-{}.conf",
-            self.distro, self.flavor
+            self.version, self.localversion
         ));
         // do not override existed entry file until forced to do so
         if entry_path.exists() {
@@ -169,7 +174,7 @@ impl Kernel {
                     println_with_prefix!("Doing nothing on this file.");
                     return Ok(());
                 }
-                self.make_config(esp_path, bootarg, force_write)?;
+                self.make_config(distro, esp_path, bootarg, force_write)?;
                 return Ok(());
             }
             println_with_prefix!("Overwriting {} ...", entry_path.display());
@@ -180,10 +185,10 @@ impl Kernel {
             entry_path.display()
         );
         // Generate entry config
-        let title = format!("title AOSC OS ({})\n", self.flavor);
+        let title = format!("title {} {}\n", distro, self.localversion);
         let vmlinuz = format!(
             "linux /{}vmlinuz-{}-{}\n",
-            REL_INST_PATH, self.distro, self.flavor
+            REL_INST_PATH, self.version, self.localversion
         );
         // automatically detect Intel ucode and write the config
         let mut ucode = String::new();
@@ -196,12 +201,25 @@ impl Kernel {
         }
         let initramfs = format!(
             "initrd /{}initramfs-{}-{}.img\n",
-            REL_INST_PATH, self.distro, self.flavor
+            REL_INST_PATH, self.version, self.localversion
         );
         let options = format!("options {}", bootarg);
         let content = title + &vmlinuz + &ucode + &initramfs + &options;
         fs::write(entry_path, content)?;
 
+        Ok(())
+    }
+
+    #[inline]
+    pub fn install_and_make_config(
+        &self,
+        distro: &str,
+        esp_path: &Path,
+        bootarg: &str,
+        force_write: bool,
+    ) -> Result<()> {
+        self.install(esp_path)?;
+        self.make_config(distro, esp_path, bootarg, force_write)?;
         Ok(())
     }
 }

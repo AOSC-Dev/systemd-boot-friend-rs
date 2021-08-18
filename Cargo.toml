@@ -1,6 +1,6 @@
 [package]
 name = "systemd-boot-friend-rs"
-version = "0.7.2"
+version = "0.8.0"
 authors = ["Jack Wu <origincode@aosc.io>"]
 edition = "2018"
 

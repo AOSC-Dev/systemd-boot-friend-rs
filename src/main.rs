@@ -19,6 +19,8 @@ const REL_INST_PATH: &str = "EFI/aosc/";
 
 #[derive(Debug, Deserialize)]
 struct Config {
+    #[serde(rename = "DISTRO")]
+    distro: String,
     #[serde(rename = "ESP_MOUNTPOINT")]
     esp_mountpoint: PathBuf,
     #[serde(rename = "BOOTARG")]
@@ -38,7 +40,7 @@ fn choose_kernel() -> Result<Kernel> {
 }
 
 /// Initialize the default environment for friend
-fn init(esp_path: &Path, bootarg: &str) -> Result<()> {
+fn init(distro: &str, esp_path: &Path, bootarg: &str) -> Result<()> {
     // use bootctl to install systemd-boot
     println_with_prefix!("Initializing systemd-boot ...");
     Command::new("bootctl")
@@ -58,7 +60,7 @@ fn init(esp_path: &Path, bootarg: &str) -> Result<()> {
     // write the entry config file
     let kernel = choose_kernel()?;
     kernel.install(esp_path)?;
-    kernel.make_config(esp_path, bootarg, false)?;
+    kernel.make_config(distro, esp_path, bootarg, false)?;
 
     Ok(())
 }
@@ -75,12 +77,8 @@ fn main() -> Result<()> {
     // Switch table
     match matches.nested {
         Some(s) => match s {
-            SubCommandEnum::Init(_) => init(&config.esp_mountpoint, &config.bootarg)?,
-            SubCommandEnum::MakeConf(args) => {
-                let kernel = choose_kernel()?;
-                // make sure the kernel selected is installed
-                kernel.install(&config.esp_mountpoint)?;
-                kernel.make_config(&config.esp_mountpoint, &config.bootarg, args.force)?;
+            SubCommandEnum::Init(_) => {
+                init(&config.distro, &config.esp_mountpoint, &config.bootarg)?
             }
             SubCommandEnum::List(_) => {
                 // list available kernels
@@ -92,17 +90,42 @@ fn main() -> Result<()> {
                 match args.target {
                     // the target can be both the number in
                     // the list and the name of the kernel
-                    Some(n) => match n.parse::<usize>() {
-                        Ok(num) => Kernel::list_kernels()?[num - 1].install(&config.esp_mountpoint)?,
-                        Err(_) => Kernel::parse(&n)?.install(&config.esp_mountpoint)?,
-                    },
+                    Some(n) => {
+                        let kernel = match n.parse::<usize>() {
+                            Ok(num) => Kernel::list_kernels()?[num - 1].clone(),
+                            Err(_) => Kernel::parse(&n)?,
+                        };
+                        kernel.install_and_make_config(
+                            &config.distro,
+                            &config.esp_mountpoint,
+                            &config.bootarg,
+                            args.force,
+                        )?;
+                    }
                     // installs the newest kernel
                     // when no target is given
-                    None => Kernel::list_kernels()?[0].install(&config.esp_mountpoint)?,
+                    None => {
+                        let kernel = &Kernel::list_kernels()?[0];
+                        kernel.install_and_make_config(
+                            &config.distro,
+                            &config.esp_mountpoint,
+                            &config.bootarg,
+                            args.force,
+                        )?
+                    }
                 }
             }
         },
-        None => choose_kernel()?.install(&config.esp_mountpoint)?,
+        None => {
+            let kernel = choose_kernel()?;
+            // make sure the kernel selected is installed
+            kernel.install_and_make_config(
+                &config.distro,
+                &config.esp_mountpoint,
+                &config.bootarg,
+                false,
+            )?;
+        }
     }
 
     Ok(())

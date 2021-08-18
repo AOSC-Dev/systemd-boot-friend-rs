@@ -14,7 +14,6 @@ pub struct Interface {
 #[argh(subcommand)]
 pub enum SubCommandEnum {
     Init(Init),
-    MakeConf(MakeConf),
     List(List),
     Install(Install),
 }
@@ -23,15 +22,6 @@ pub enum SubCommandEnum {
 #[argh(subcommand, name = "init")]
 /// Initialize systemd-boot-friend
 pub struct Init {}
-
-#[derive(FromArgs, Debug)]
-#[argh(subcommand, name = "mkconf")]
-/// Create systemd-boot entry config
-pub struct MakeConf {
-    /// force overwrite the entry config or not
-    #[argh(switch, short = 'f')]
-    pub force: bool,
-}
 
 #[derive(FromArgs, Debug)]
 #[argh(subcommand, name = "list")]
@@ -44,4 +34,7 @@ pub struct List {}
 pub struct Install {
     #[argh(positional)]
     pub target: Option<String>,
+    /// force overwrite the entry config or not
+    #[argh(switch, short = 'f')]
+    pub force: bool,
 }
