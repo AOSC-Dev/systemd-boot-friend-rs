@@ -9,7 +9,7 @@ const UCODE: &str = "intel-ucode.img";
 const MODULES_PATH: &str = "/usr/lib/modules/";
 
 /// A kernel struct for parsing kernel filenames
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub struct Kernel {
     pub version: Version,
     pub localversion: String,
@@ -37,18 +37,12 @@ impl Default for Kernel {
     fn default() -> Self {
         Self {
             version: Version::new(0, 0, 0),
-            localversion: String::new(),
+            localversion: "unknown".to_owned(),
         }
     }
 }
 
 impl Kernel {
-    pub fn new(version: &str, localversion: &str) -> Result<Self> {
-        Ok(Self {
-            version: Version::parse(version)?,
-            localversion: localversion.to_owned(),
-        })
-    }
     /// Parse a kernel filename
     pub fn parse(kernel_name: &str) -> Result<Self> {
         // Split the kernel filename into 3 parts in order to determine
@@ -134,10 +128,7 @@ impl Kernel {
         bootarg: &str,
         force_write: bool,
     ) -> Result<()> {
-        let entry_path = esp_path.join(format!(
-            "loader/entries/{}-{}.conf",
-            self.version, self.localversion
-        ));
+        let entry_path = esp_path.join(format!("loader/entries/{}.conf", self));
         // do not override existed entry file until forced to do so
         if entry_path.exists() && !force_write {
             let overwrite = Confirm::with_theme(&ColorfulTheme::default())
@@ -177,12 +168,15 @@ impl Kernel {
         Ok(())
     }
 
-    pub fn list_installed_kernels() -> Result<()> {
-        todo!()
-    }
-
     pub fn remove(&self, esp_path: &Path) -> Result<()> {
-        todo!()
+        let kernel_path = esp_path.join(REL_DEST_PATH);
+        println_with_prefix!("Removing {} kernel ...", self);
+        fs::remove_file(kernel_path.join(format!("vmlinuz-{}", self)))?;
+        fs::remove_file(kernel_path.join(format!("initramfs-{}.img", self)))?;
+        println_with_prefix!("Removing {} boot entry ...", self);
+        fs::remove_file(esp_path.join(format!("loader/entries/{}.conf", self)))?;
+
+        Ok(())
     }
 
     #[inline]
@@ -198,4 +192,14 @@ impl Kernel {
 
         Ok(())
     }
+}
+
+#[test]
+fn test_kernel_struct() {
+    assert_eq!(Kernel::parse("0.0.0-unknown").unwrap(), Kernel::default())
+}
+
+#[test]
+fn test_kernel_display() {
+    assert_eq!(format!("{}", Kernel::parse("0.0.0-unknown").unwrap()), "0.0.0-unknown")
 }
