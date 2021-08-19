@@ -31,7 +31,7 @@ impl PartialOrd for Kernel {
 
 impl fmt::Display for Kernel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.get_name())
+        write!(f, "{}-{}", self.version, self.localversion)
     }
 }
 
@@ -79,11 +79,6 @@ impl Kernel {
         Ok(kernels)
     }
 
-    /// Get the full name of the kernel
-    fn get_name(&self) -> String {
-        format!("{}-{}", self.version, self.localversion)
-    }
-
     /// Install a specific kernel to the esp using the given kernel filename
     pub fn install(&self, esp_path: &Path) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend
@@ -102,11 +97,7 @@ impl Kernel {
             return Err(anyhow!("{} not found", install_path.display()));
         }
         // generate the path to the source files
-        println_with_prefix!(
-            "Installing {} to {} ...",
-            self.get_name(),
-            install_path.display()
-        );
+        println_with_prefix!("Installing {} to {} ...", self, install_path.display());
         let vmlinuz_path = format!("{}vmlinuz-{}-{}", SRC_PATH, self.version, self.localversion);
         let initramfs_path = format!(
             "{}initramfs-{}-{}.img",
@@ -151,23 +142,21 @@ impl Kernel {
             self.version, self.localversion
         ));
         // do not override existed entry file until forced to do so
-        if entry_path.exists() {
+        if entry_path.exists() && !force_write {
+            let force_write = Confirm::with_theme(&ColorfulTheme::default())
+                .with_prompt(format!(
+                    "{} already exists. Overwrite?",
+                    entry_path.display()
+                ))
+                .default(false)
+                .interact()?;
             if !force_write {
-                let force_write = Confirm::with_theme(&ColorfulTheme::default())
-                    .with_prompt(format!(
-                        "{} already exists. Overwrite?",
-                        entry_path.display()
-                    ))
-                    .default(false)
-                    .interact()?;
-                if !force_write {
-                    println_with_prefix!("Doing nothing on this file.");
-                    return Ok(());
-                }
-                self.make_config(distro, esp_path, bootarg, force_write)?;
+                println_with_prefix!("Doing nothing on this file.");
                 return Ok(());
             }
             println_with_prefix!("Overwriting {} ...", entry_path.display());
+            self.make_config(distro, esp_path, bootarg, force_write)?;
+            return Ok(());
         }
         println_with_prefix!(
             "Creating boot entry for {} at {} ...",
@@ -175,7 +164,7 @@ impl Kernel {
             entry_path.display()
         );
         // Generate entry config
-        let title = format!("title {} ({})\n", distro, self.get_name());
+        let title = format!("title {} ({})\n", distro, self);
         let vmlinuz = format!(
             "linux /{}vmlinuz-{}-{}\n",
             REL_INST_PATH, self.version, self.localversion
