@@ -16,6 +16,8 @@ pub enum SubCommandEnum {
     Init(Init),
     List(List),
     Install(Install),
+    ListInstalled(ListInstalled),
+    Remove(Remove),
 }
 
 #[derive(FromArgs, Debug)]
@@ -37,4 +39,17 @@ pub struct Install {
     /// force overwrite the entry config or not
     #[argh(switch, short = 'f')]
     pub force: bool,
+}
+
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "list-installed")]
+/// List all installed kernels
+pub struct ListInstalled {}
+
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "remove")]
+/// Remove the kernel specified
+pub struct Remove {
+    #[argh(positional)]
+    pub target: Option<String>,
 }

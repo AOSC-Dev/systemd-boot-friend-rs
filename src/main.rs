@@ -15,7 +15,7 @@ mod kernel;
 mod macros;
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
-const REL_INST_PATH: &str = "EFI/aosc/";
+const REL_DEST_PATH: &str = "EFI/aosc/";
 
 #[derive(Debug, Deserialize)]
 struct Config {
@@ -39,6 +39,19 @@ fn choose_kernel() -> Result<Kernel> {
     Ok(kernels[n].clone())
 }
 
+/// Choose an installed kernel using dialoguer
+fn choose_installed_kernel() -> Result<Kernel> {
+    // let kernels = Kernel::list_installed_kernels()?;
+    // // build dialoguer Select for kernel selection
+    // let n = Select::with_theme(&ColorfulTheme::default())
+    //     .items(&kernels)
+    //     .default(0)
+    //     .interact()?;
+    //
+    // Ok(kernels[n].clone())
+    todo!()
+}
+
 /// Initialize the default environment for friend
 fn init(distro: &str, esp_path: &Path, bootarg: &str) -> Result<()> {
     // use bootctl to install systemd-boot
@@ -55,7 +68,7 @@ fn init(distro: &str, esp_path: &Path, bootarg: &str) -> Result<()> {
         .spawn()?;
     // create folder structure
     println_with_prefix!("Creating folder structure for friend ...");
-    fs::create_dir_all(esp_path.join(REL_INST_PATH))?;
+    fs::create_dir_all(esp_path.join(REL_DEST_PATH))?;
     // choose the kernel to install and
     // write the entry config file
     let kernel = choose_kernel()?;
@@ -104,6 +117,8 @@ fn main() -> Result<()> {
                     args.force,
                 )?;
             }
+            SubCommandEnum::ListInstalled(_) => todo!(),
+            SubCommandEnum::Remove(args) => todo!(),
         },
         None => {
             let kernel = choose_kernel()?;

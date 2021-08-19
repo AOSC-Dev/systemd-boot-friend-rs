@@ -1,13 +1,11 @@
-use crate::*;
+use crate::{println_with_prefix, CONF_PATH, REL_DEST_PATH};
 use anyhow::{anyhow, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use semver::Version;
 use std::{fmt, fs, path::Path};
 
-const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
-const REL_INST_PATH: &str = "EFI/aosc/";
 const SRC_PATH: &str = "/boot/";
-const UCODE_PATH: &str = "/boot/intel-ucode.img";
+const UCODE: &str = "intel-ucode.img";
 const MODULES_PATH: &str = "/usr/lib/modules/";
 
 /// A kernel struct for parsing kernel filenames
@@ -35,7 +33,22 @@ impl fmt::Display for Kernel {
     }
 }
 
+impl Default for Kernel {
+    fn default() -> Self {
+        Self {
+            version: Version::new(0, 0, 0),
+            localversion: String::new(),
+        }
+    }
+}
+
 impl Kernel {
+    pub fn new(version: &str, localversion: &str) -> Result<Self> {
+        Ok(Self {
+            version: Version::parse(version)?,
+            localversion: localversion.to_owned(),
+        })
+    }
     /// Parse a kernel filename
     pub fn parse(kernel_name: &str) -> Result<Self> {
         // Split the kernel filename into 3 parts in order to determine
@@ -68,11 +81,10 @@ impl Kernel {
                 )
             })
             .collect::<Result<Vec<Self>>>()?;
-
+        // make sure the vector is not empty
         if kernels.is_empty() {
             return Err(anyhow!("No kernel found"));
         }
-
         // Sort the vector, thus the kernel filenames are
         // arranged with versions from newer to older
         kernels.sort_by(|a, b| b.cmp(a));
@@ -82,9 +94,10 @@ impl Kernel {
     /// Install a specific kernel to the esp using the given kernel filename
     pub fn install(&self, esp_path: &Path) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend
-        let install_path = esp_path.join(REL_INST_PATH);
-        if !install_path.exists() {
-            println_with_prefix!("{} does not exist. Doing nothing.", install_path.display());
+        let dest_path = esp_path.join(REL_DEST_PATH);
+        let src_path = Path::new(SRC_PATH);
+        if !dest_path.exists() {
+            println_with_prefix!("{} does not exist. Doing nothing.", dest_path.display());
             println_with_prefix!(
                 "If you wish to use systemd-boot, execute `systemd-boot-friend init` first."
             );
@@ -93,37 +106,21 @@ impl Kernel {
                 esp_path.display(),
                 CONF_PATH
             );
-
-            return Err(anyhow!("{} not found", install_path.display()));
+            return Err(anyhow!("{} not found", dest_path.display()));
         }
         // generate the path to the source files
-        println_with_prefix!("Installing {} to {} ...", self, install_path.display());
-        let vmlinuz_path = format!("{}vmlinuz-{}-{}", SRC_PATH, self.version, self.localversion);
-        let initramfs_path = format!(
-            "{}initramfs-{}-{}.img",
-            SRC_PATH, self.version, self.localversion
-        );
-        let src_vmlinuz = Path::new(&vmlinuz_path);
-        let src_initramfs = Path::new(&initramfs_path);
-        let src_ucode = Path::new(UCODE_PATH);
+        println_with_prefix!("Installing {} to {} ...", self, dest_path.display());
+        let vmlinuz = format!("vmlinuz-{}", self);
+        let initramfs = format!("initramfs-{}.img", self);
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
-        fs::copy(
-            &src_vmlinuz,
-            install_path.join(format!("vmlinuz-{}-{}", self.version, self.localversion)),
-        )?;
-        fs::copy(
-            &src_initramfs,
-            install_path.join(format!(
-                "initramfs-{}-{}.img",
-                self.version, self.localversion
-            )),
-        )?;
-
+        fs::copy(src_path.join(&vmlinuz), dest_path.join(&vmlinuz))?;
+        fs::copy(src_path.join(&initramfs), dest_path.join(&initramfs))?;
         // copy Intel ucode if exists
-        if src_ucode.exists() {
+        let ucode_path = src_path.join(UCODE);
+        if ucode_path.exists() {
             println_with_prefix!("intel-ucode detected. Installing ...");
-            fs::copy(&src_ucode, install_path.join("intel-ucode.img"))?;
+            fs::copy(ucode_path, dest_path.join(UCODE))?;
         }
 
         Ok(())
@@ -143,19 +140,19 @@ impl Kernel {
         ));
         // do not override existed entry file until forced to do so
         if entry_path.exists() && !force_write {
-            let force_write = Confirm::with_theme(&ColorfulTheme::default())
+            let overwrite = Confirm::with_theme(&ColorfulTheme::default())
                 .with_prompt(format!(
                     "{} already exists. Overwrite?",
                     entry_path.display()
                 ))
                 .default(false)
                 .interact()?;
-            if !force_write {
+            if !overwrite {
                 println_with_prefix!("Doing nothing on this file.");
                 return Ok(());
             }
             println_with_prefix!("Overwriting {} ...", entry_path.display());
-            self.make_config(distro, esp_path, bootarg, force_write)?;
+            self.make_config(distro, esp_path, bootarg, overwrite)?;
             return Ok(());
         }
         println_with_prefix!(
@@ -165,29 +162,27 @@ impl Kernel {
         );
         // Generate entry config
         let title = format!("title {} ({})\n", distro, self);
-        let vmlinuz = format!(
-            "linux /{}vmlinuz-{}-{}\n",
-            REL_INST_PATH, self.version, self.localversion
-        );
+        let vmlinuz = format!("linux /{}vmlinuz-{}\n", REL_DEST_PATH, self);
         // automatically detect Intel ucode and write the config
-        let ucode = if esp_path
-            .join(REL_INST_PATH)
-            .join("intel-ucode.img")
-            .exists()
-        {
-            format!("initrd /{}intel-ucode.img\n", REL_INST_PATH)
+        let ucode = if esp_path.join(REL_DEST_PATH).join(UCODE).exists() {
+            format!("initrd /{}{}\n", REL_DEST_PATH, UCODE)
         } else {
             String::new()
         };
-        let initramfs = format!(
-            "initrd /{}initramfs-{}-{}.img\n",
-            REL_INST_PATH, self.version, self.localversion
-        );
+        let initramfs = format!("initrd /{}initramfs-{}.img\n", REL_DEST_PATH, self);
         let options = format!("options {}", bootarg);
         let content = title + &vmlinuz + &ucode + &initramfs + &options;
         fs::write(entry_path, content)?;
 
         Ok(())
+    }
+
+    pub fn list_installed_kernels() -> Result<()> {
+        todo!()
+    }
+
+    pub fn remove(&self, esp_path: &Path) -> Result<()> {
+        todo!()
     }
 
     #[inline]
@@ -200,6 +195,7 @@ impl Kernel {
     ) -> Result<()> {
         self.install(esp_path)?;
         self.make_config(distro, esp_path, bootarg, force_write)?;
+
         Ok(())
     }
 }
