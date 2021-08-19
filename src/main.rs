@@ -30,6 +30,9 @@ struct Config {
 
 /// Choose a kernel using dialoguer
 fn choose_kernel(kernels: &Vec<Kernel>) -> Result<Kernel> {
+    if kernels.is_empty() {
+        return Err(anyhow!("Empty list"));
+    }
     // build dialoguer Select for kernel selection
     let n = Select::with_theme(&ColorfulTheme::default())
         .items(&kernels)
@@ -98,12 +101,18 @@ fn main() -> Result<()> {
                     // the target can be both the number in
                     // the list and the name of the kernel
                     Some(n) => match n.parse::<usize>() {
-                        Ok(num) => Kernel::list_kernels()?[num - 1].clone(),
+                        Ok(num) => Kernel::list_kernels()?
+                            .get(num - 1)
+                            .ok_or_else(|| anyhow!("No kernel found"))?
+                            .clone(),
                         Err(_) => Kernel::parse(&n)?,
                     },
                     // install the newest kernel
                     // when no target is given
-                    None => Kernel::list_kernels()?[0].clone(),
+                    None => Kernel::list_kernels()?
+                        .first()
+                        .ok_or_else(|| anyhow!("No kernel found"))?
+                        .clone(),
                 };
                 kernel.install_and_make_config(
                     &config.distro,
