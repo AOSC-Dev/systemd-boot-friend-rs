@@ -103,7 +103,7 @@ fn main() -> Result<()> {
                     Some(n) => match n.parse::<usize>() {
                         Ok(num) => Kernel::list_kernels()?
                             .get(num - 1)
-                            .ok_or_else(|| anyhow!("No kernel found"))?
+                            .ok_or_else(|| anyhow!("Invalid kernel number"))?
                             .clone(),
                         Err(_) => Kernel::parse(&n)?,
                     },
@@ -132,7 +132,10 @@ fn main() -> Result<()> {
                     // the target can be both the number in
                     // the list and the name of the kernel
                     Some(n) => match n.parse::<usize>() {
-                        Ok(num) => installed_kernels[num - 1].clone(),
+                        Ok(num) => installed_kernels
+                            .get(num - 1)
+                            .ok_or_else(|| anyhow!("Invalid kernel number"))?
+                            .clone(),
                         Err(_) => Kernel::parse(&n)?,
                     },
                     // select the kernel to remove
