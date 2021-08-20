@@ -164,6 +164,7 @@ impl Kernel {
         Ok(())
     }
 
+    // Try to remove a kernel
     pub fn remove(&self, esp_path: &Path) -> Result<()> {
         let kernel_path = esp_path.join(REL_DEST_PATH);
         println_with_prefix!("Removing {} kernel ...", self);
