@@ -1,5 +1,6 @@
 use crate::{println_with_prefix, CONF_PATH, REL_DEST_PATH};
 use anyhow::{anyhow, Result};
+use core::{default::Default, str::FromStr};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use semver::Version;
 use std::{fmt, fs, path::Path};
@@ -33,21 +34,13 @@ impl fmt::Display for Kernel {
     }
 }
 
-impl Default for Kernel {
-    fn default() -> Self {
-        Self {
-            version: Version::new(0, 0, 0),
-            localversion: "unknown".to_owned(),
-        }
-    }
-}
+impl FromStr for Kernel {
+    type Err = anyhow::Error;
 
-impl Kernel {
-    /// Parse a kernel filename
-    pub fn parse(kernel_name: &str) -> Result<Self> {
+    fn from_str(text: &str) -> Result<Self> {
         // Split the kernel filename into 3 parts in order to determine
         // the version, name and the flavor of the kernel
-        let mut splitted_kernel_name = kernel_name.splitn(2, '-');
+        let mut splitted_kernel_name = text.splitn(2, '-');
         let version = Version::parse(
             splitted_kernel_name
                 .next()
@@ -61,6 +54,22 @@ impl Kernel {
             version,
             localversion,
         })
+    }
+}
+
+impl Default for Kernel {
+    fn default() -> Self {
+        Self {
+            version: Version::new(0, 0, 0),
+            localversion: "unknown".to_owned(),
+        }
+    }
+}
+
+impl Kernel {
+    /// Parse a kernel filename
+    pub fn parse(kernel_name: &str) -> Result<Self> {
+        Self::from_str(kernel_name)
     }
 
     /// Generate a sorted vector of kernel filenames
@@ -198,5 +207,8 @@ fn test_kernel_struct() {
 
 #[test]
 fn test_kernel_display() {
-    assert_eq!(format!("{}", Kernel::parse("0.0.0-unknown").unwrap()), "0.0.0-unknown")
+    assert_eq!(
+        format!("{}", Kernel::parse("0.0.0-unknown").unwrap()),
+        "0.0.0-unknown"
+    )
 }
