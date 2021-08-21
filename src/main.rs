@@ -70,10 +70,21 @@ fn init(distro: &str, esp_path: &Path, bootarg: &str) -> Result<Kernel> {
 fn main() -> Result<()> {
     // Read config
     let config: Config = toml::from_slice(&fs::read(CONF_PATH)?)?;
-    let mut installed_kernels = serde_json::from_slice::<Vec<String>>(&fs::read(INSTALLED_PATH)?)?
-        .iter()
-        .map(|s| Kernel::parse(s))
-        .collect::<Result<Vec<Kernel>>>()?;
+    // the record file of installed kernels, use empty value if not found
+    let mut installed_kernels = Vec::new();
+    if let Ok(f) = fs::read(INSTALLED_PATH) {
+        installed_kernels = serde_json::from_slice::<Vec<String>>(&f)?
+            .iter()
+            .map(|s| Kernel::parse(s))
+            .collect::<Result<Vec<Kernel>>>()?;
+    } else {
+        // Create the folder structure for the record of installed kernels
+        fs::create_dir_all(Path::new(INSTALLED_PATH).parent().unwrap())?;
+        serde_json::to_writer(
+            fs::File::create(INSTALLED_PATH)?,
+            &Vec::<String>::new(),
+        )?;
+    }
     // CLI
     let matches: Interface = from_env();
     if matches.version {
