@@ -72,6 +72,18 @@ impl Kernel {
         Self::from_str(kernel_name)
     }
 
+    /// Parse vmlinuz and initrd filenames
+    fn parse_filenames(&self, vmlinuz: &str, initrd: &str) -> (String, String) {
+        (
+            vmlinuz
+                .replace("{VERSION}", &self.version.to_string())
+                .replace("{LOCALVERSION}", &self.localversion),
+            initrd
+                .replace("{VERSION}", &self.version.to_string())
+                .replace("{LOCALVERSION}", &self.localversion),
+        )
+    }
+
     /// Generate a sorted vector of kernel filenames
     pub fn list_kernels() -> Result<Vec<Self>> {
         // read /usr/lib/modules to get kernel filenames
@@ -91,7 +103,7 @@ impl Kernel {
     }
 
     /// Install a specific kernel to the esp using the given kernel filename
-    pub fn install(&self, esp_path: &Path) -> Result<()> {
+    pub fn install(&self, vmlinuz: &str, initrd: &str, esp_path: &Path) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend
         let dest_path = esp_path.join(REL_DEST_PATH);
         let src_path = Path::new(SRC_PATH);
@@ -109,12 +121,11 @@ impl Kernel {
         }
         // generate the path to the source files
         println_with_prefix!("Installing {} to {} ...", self, dest_path.display());
-        let vmlinuz = format!("vmlinuz-{}", self);
-        let initramfs = format!("initramfs-{}.img", self);
+        let (vmlinuz, initrd) = self.parse_filenames(vmlinuz, initrd);
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
         fs::copy(src_path.join(&vmlinuz), dest_path.join(&vmlinuz))?;
-        fs::copy(src_path.join(&initramfs), dest_path.join(&initramfs))?;
+        fs::copy(src_path.join(&initrd), dest_path.join(&initrd))?;
         // copy Intel ucode if exists
         let ucode_path = src_path.join(UCODE);
         if ucode_path.exists() {
@@ -128,6 +139,8 @@ impl Kernel {
     /// Create a systemd-boot entry config
     pub fn make_config(
         &self,
+        vmlinuz: &str,
+        initrd: &str,
         distro: &str,
         esp_path: &Path,
         bootarg: &str,
@@ -148,7 +161,7 @@ impl Kernel {
                 return Ok(());
             }
             println_with_prefix!("Overwriting {} ...", entry_path.display());
-            self.make_config(distro, esp_path, bootarg, overwrite)?;
+            self.make_config(vmlinuz, initrd, distro, esp_path, bootarg, overwrite)?;
             return Ok(());
         }
         println_with_prefix!(
@@ -156,29 +169,31 @@ impl Kernel {
             self,
             entry_path.display()
         );
+        let (vmlinuz_file, initrd_file) = self.parse_filenames(vmlinuz, initrd);
         // Generate entry config
         let title = format!("title {} ({})\n", distro, self);
-        let vmlinuz = format!("linux /{}vmlinuz-{}\n", REL_DEST_PATH, self);
+        let vmlinuz = format!("linux /{}{}\n", REL_DEST_PATH, vmlinuz_file);
         // automatically detect Intel ucode and write the config
         let ucode = if esp_path.join(REL_DEST_PATH).join(UCODE).exists() {
             format!("initrd /{}{}\n", REL_DEST_PATH, UCODE)
         } else {
             String::new()
         };
-        let initramfs = format!("initrd /{}initramfs-{}.img\n", REL_DEST_PATH, self);
+        let initrd = format!("initrd /{}{}\n", REL_DEST_PATH, initrd_file);
         let options = format!("options {}", bootarg);
-        let content = title + &vmlinuz + &ucode + &initramfs + &options;
+        let content = title + &vmlinuz + &ucode + &initrd + &options;
         fs::write(entry_path, content)?;
 
         Ok(())
     }
 
     // Try to remove a kernel
-    pub fn remove(&self, esp_path: &Path) -> Result<()> {
+    pub fn remove(&self, vmlinuz: &str, initrd: &str, esp_path: &Path) -> Result<()> {
         let kernel_path = esp_path.join(REL_DEST_PATH);
+        let (vmlinuz, initrd) = self.parse_filenames(vmlinuz, initrd);
         println_with_prefix!("Removing {} kernel ...", self);
-        fs::remove_file(kernel_path.join(format!("vmlinuz-{}", self)))?;
-        fs::remove_file(kernel_path.join(format!("initramfs-{}.img", self)))?;
+        fs::remove_file(kernel_path.join(vmlinuz))?;
+        fs::remove_file(kernel_path.join(initrd))?;
         println_with_prefix!("Removing {} boot entry ...", self);
         fs::remove_file(esp_path.join(format!("loader/entries/{}.conf", self)))?;
 
@@ -188,13 +203,15 @@ impl Kernel {
     #[inline]
     pub fn install_and_make_config(
         &self,
+        vmlinuz: &str,
+        initrd: &str,
         distro: &str,
         esp_path: &Path,
         bootarg: &str,
         force_write: bool,
     ) -> Result<()> {
-        self.install(esp_path)?;
-        self.make_config(distro, esp_path, bootarg, force_write)?;
+        self.install(vmlinuz, initrd, esp_path)?;
+        self.make_config(vmlinuz, initrd, distro, esp_path, bootarg, force_write)?;
 
         Ok(())
     }
