@@ -11,7 +11,7 @@ const MODULES_PATH: &str = "/usr/lib/modules/";
 const REL_ENTRY_PATH: &str = "loader/entries/";
 
 /// A kernel struct for parsing kernel filenames
-#[derive(Debug, Eq, PartialEq, Clone, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Kernel {
     pub version: Version,
     pub localversion: String,
