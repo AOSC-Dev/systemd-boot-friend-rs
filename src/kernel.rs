@@ -8,6 +8,7 @@ use std::{fmt, fs, path::Path};
 const SRC_PATH: &str = "/boot/";
 const UCODE: &str = "intel-ucode.img";
 const MODULES_PATH: &str = "/usr/lib/modules/";
+const REL_ENTRY_PATH: &str = "loader/entries/";
 
 /// A kernel struct for parsing kernel filenames
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
@@ -39,17 +40,14 @@ impl FromStr for Kernel {
 
     fn from_str(text: &str) -> Result<Self> {
         // Split the kernel filename into 3 parts in order to determine
-        // the version, name and the flavor of the kernel
+        // the version and the localversion of the kernel
         let mut splitted_kernel_name = text.splitn(2, '-');
         let version = Version::parse(
             splitted_kernel_name
                 .next()
                 .ok_or_else(|| anyhow!("invalid kernel filename"))?,
         )?;
-        let localversion = splitted_kernel_name
-            .next()
-            .unwrap_or_else(|| "unknown")
-            .to_owned();
+        let localversion = splitted_kernel_name.next().unwrap_or("unknown").to_owned();
         Ok(Self {
             version,
             localversion,
@@ -146,7 +144,21 @@ impl Kernel {
         bootarg: &str,
         force_write: bool,
     ) -> Result<()> {
-        let entry_path = esp_path.join(format!("loader/entries/{}.conf", self));
+        // if the path does not exist, ask the user for initializing friend
+        let entries_path = esp_path.join(REL_ENTRY_PATH);
+        if !entries_path.exists() {
+            println_with_prefix!("{} does not exist. Doing nothing.", entries_path.display());
+            println_with_prefix!(
+                "If you wish to use systemd-boot, execute `systemd-boot-friend init` first."
+            );
+            println_with_prefix!(
+                "Or, if your ESP mountpoint is not at \"{}\", please edit {}.",
+                esp_path.display(),
+                CONF_PATH
+            );
+            return Err(anyhow!("{} not found", entries_path.display()));
+        }
+        let entry_path = entries_path.join(self.to_string());
         // do not override existed entry file until forced to do so
         if entry_path.exists() && !force_write {
             let overwrite = Confirm::with_theme(&ColorfulTheme::default())

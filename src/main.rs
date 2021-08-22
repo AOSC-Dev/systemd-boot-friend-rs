@@ -33,13 +33,13 @@ struct Config {
 }
 
 /// Choose a kernel using dialoguer
-fn choose_kernel(kernels: &Vec<Kernel>) -> Result<Kernel> {
+fn choose_kernel(kernels: &[Kernel]) -> Result<Kernel> {
     if kernels.is_empty() {
         return Err(anyhow!("Empty list"));
     }
     // build dialoguer Select for kernel selection
     let n = Select::with_theme(&ColorfulTheme::default())
-        .items(&kernels)
+        .items(kernels)
         .default(0)
         .interact()?;
 
