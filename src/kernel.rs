@@ -235,10 +235,9 @@ fn test_kernel_struct() {
 #[test]
 fn test_kernel_display() {
     assert_eq!(
-        format!(
-            "{}",
-            Kernel::parse("0.0.0-unknown", &Config::default()).unwrap()
-        ),
+        Kernel::parse("0.0.0-unknown", &Config::default())
+            .unwrap()
+            .to_string(),
         "0.0.0-unknown"
     )
 }
