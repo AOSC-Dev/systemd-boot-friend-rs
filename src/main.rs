@@ -3,13 +3,14 @@ use argh::from_env;
 use cli::{Interface, SubCommandEnum};
 use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Select};
-use kernel::Kernel;
 use serde::Deserialize;
 use std::{
     fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
+
+use kernel::Kernel;
 
 mod cli;
 mod kernel;

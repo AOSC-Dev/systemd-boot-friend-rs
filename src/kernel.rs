@@ -1,14 +1,27 @@
-use crate::{println_with_prefix, Config, CONF_PATH, REL_DEST_PATH};
 use anyhow::{anyhow, Result};
 use core::{default::Default, str::FromStr};
 use dialoguer::{theme::ColorfulTheme, Confirm};
+use sailfish::TemplateOnce;
 use semver::Version;
 use std::{fmt, fs, path::PathBuf};
+
+use crate::{println_with_prefix, Config, CONF_PATH, REL_DEST_PATH};
 
 const SRC_PATH: &str = "/boot/";
 const UCODE: &str = "intel-ucode.img";
 const MODULES_PATH: &str = "/usr/lib/modules/";
 const REL_ENTRY_PATH: &str = "loader/entries/";
+
+#[derive(TemplateOnce)]
+#[template(path = "entry.stpl")]
+struct Entry {
+    distro: String,
+    kernel: String,
+    vmlinuz: String,
+    ucode: Option<String>,
+    initrd: String,
+    options: String,
+}
 
 /// A kernel struct for parsing kernel filenames
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -116,7 +129,7 @@ impl Kernel {
                 "If you wish to use systemd-boot, execute `systemd-boot-friend init` first."
             );
             println_with_prefix!(
-                "Or, if your ESP mountpoint is not at \"{}\", please edit {}.",
+                r#"Or, if your ESP mountpoint is not at "{}", please edit {}."#,
                 config.esp_mountpoint.display(),
                 CONF_PATH
             );
@@ -148,7 +161,7 @@ impl Kernel {
                 "If you wish to use systemd-boot, execute `systemd-boot-friend init` first."
             );
             println_with_prefix!(
-                "Or, if your ESP mountpoint is not at \"{}\", please edit {}.",
+                r#"Or, if your ESP mountpoint is not at "{}", please edit {}."#,
                 config.esp_mountpoint.display(),
                 CONF_PATH
             );
@@ -178,23 +191,27 @@ impl Kernel {
             entry_path.display()
         );
         // Generate entry config
-        let title = format!("title {} ({})\n", config.distro, self);
-        let vmlinuz = format!("linux /{}{}\n", REL_DEST_PATH, self.vmlinuz);
-        // automatically detect Intel ucode and write the config
-        let ucode = if config
-            .esp_mountpoint
-            .join(REL_DEST_PATH)
-            .join(UCODE)
-            .exists()
-        {
-            format!("initrd /{}{}\n", REL_DEST_PATH, UCODE)
-        } else {
-            String::new()
-        };
-        let initrd = format!("initrd /{}{}\n", REL_DEST_PATH, self.initrd);
-        let options = format!("options {}", config.bootarg);
-        let content = title + &vmlinuz + &ucode + &initrd + &options;
-        fs::write(entry_path, content)?;
+        fs::write(
+            entry_path,
+            Entry {
+                distro: config.distro.to_owned(),
+                kernel: self.to_string(),
+                vmlinuz: self.vmlinuz.to_owned(),
+                ucode: if config
+                    .esp_mountpoint
+                    .join(REL_DEST_PATH)
+                    .join(UCODE)
+                    .exists()
+                {
+                    Some(UCODE.to_owned())
+                } else {
+                    None
+                },
+                initrd: self.initrd.to_owned(),
+                options: config.bootarg.to_owned(),
+            }
+            .render_once()?,
+        )?;
 
         Ok(())
     }
