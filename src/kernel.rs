@@ -1,9 +1,9 @@
-use crate::{println_with_prefix, CONF_PATH, REL_DEST_PATH};
+use crate::{println_with_prefix, Config, CONF_PATH, REL_DEST_PATH};
 use anyhow::{anyhow, Result};
 use core::{default::Default, str::FromStr};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use semver::Version;
-use std::{fmt, fs, path::Path};
+use std::{fmt, fs, path::PathBuf};
 
 const SRC_PATH: &str = "/boot/";
 const UCODE: &str = "intel-ucode.img";
@@ -15,6 +15,8 @@ const REL_ENTRY_PATH: &str = "loader/entries/";
 pub struct Kernel {
     pub version: Version,
     pub localversion: String,
+    vmlinuz: String,
+    initrd: String,
 }
 
 impl Ord for Kernel {
@@ -51,6 +53,8 @@ impl FromStr for Kernel {
         Ok(Self {
             version,
             localversion,
+            vmlinuz: String::new(),
+            initrd: String::new(),
         })
     }
 }
@@ -60,30 +64,30 @@ impl Default for Kernel {
         Self {
             version: Version::new(0, 0, 0),
             localversion: "unknown".to_owned(),
+            vmlinuz: "vmlinuz-0.0.0-unknown".to_owned(),
+            initrd: "initramfs-0.0.0-unknown.img".to_owned(),
         }
     }
 }
 
 impl Kernel {
     /// Parse a kernel filename
-    pub fn parse(kernel_name: &str) -> Result<Self> {
-        Self::from_str(kernel_name)
-    }
+    pub fn parse(kernel_name: &str, config: &Config) -> Result<Self> {
+        let mut kernel = Self::from_str(kernel_name)?;
+        kernel.vmlinuz = config
+            .vmlinuz
+            .replace("{VERSION}", &kernel.version.to_string())
+            .replace("{LOCALVERSION}", &kernel.localversion);
+        kernel.initrd = config
+            .initrd
+            .replace("{VERSION}", &kernel.version.to_string())
+            .replace("{LOCALVERSION}", &kernel.localversion);
 
-    /// Parse vmlinuz and initrd filenames
-    fn parse_filenames(&self, vmlinuz: &str, initrd: &str) -> (String, String) {
-        (
-            vmlinuz
-                .replace("{VERSION}", &self.version.to_string())
-                .replace("{LOCALVERSION}", &self.localversion),
-            initrd
-                .replace("{VERSION}", &self.version.to_string())
-                .replace("{LOCALVERSION}", &self.localversion),
-        )
+        Ok(kernel)
     }
 
     /// Generate a sorted vector of kernel filenames
-    pub fn list_kernels() -> Result<Vec<Self>> {
+    pub fn list_kernels(config: &Config) -> Result<Vec<Self>> {
         // read /usr/lib/modules to get kernel filenames
         let mut kernels = fs::read_dir(MODULES_PATH)?
             .map(|k| {
@@ -91,6 +95,7 @@ impl Kernel {
                     &k?.file_name()
                         .into_string()
                         .unwrap_or_else(|_| String::new()),
+                    config,
                 )
             })
             .collect::<Result<Vec<Self>>>()?;
@@ -101,10 +106,10 @@ impl Kernel {
     }
 
     /// Install a specific kernel to the esp using the given kernel filename
-    pub fn install(&self, vmlinuz: &str, initrd: &str, esp_path: &Path) -> Result<()> {
+    pub fn install(&self, config: &Config) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend
-        let dest_path = esp_path.join(REL_DEST_PATH);
-        let src_path = Path::new(SRC_PATH);
+        let dest_path = config.esp_mountpoint.join(REL_DEST_PATH);
+        let src_path = PathBuf::from(SRC_PATH);
         if !dest_path.exists() {
             println_with_prefix!("{} does not exist. Doing nothing.", dest_path.display());
             println_with_prefix!(
@@ -112,18 +117,17 @@ impl Kernel {
             );
             println_with_prefix!(
                 "Or, if your ESP mountpoint is not at \"{}\", please edit {}.",
-                esp_path.display(),
+                config.esp_mountpoint.display(),
                 CONF_PATH
             );
             return Err(anyhow!("{} not found", dest_path.display()));
         }
         // generate the path to the source files
         println_with_prefix!("Installing {} to {} ...", self, dest_path.display());
-        let (vmlinuz, initrd) = self.parse_filenames(vmlinuz, initrd);
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
-        fs::copy(src_path.join(&vmlinuz), dest_path.join(&vmlinuz))?;
-        fs::copy(src_path.join(&initrd), dest_path.join(&initrd))?;
+        fs::copy(src_path.join(&self.vmlinuz), dest_path.join(&self.vmlinuz))?;
+        fs::copy(src_path.join(&self.initrd), dest_path.join(&self.initrd))?;
         // copy Intel ucode if exists
         let ucode_path = src_path.join(UCODE);
         if ucode_path.exists() {
@@ -135,17 +139,9 @@ impl Kernel {
     }
 
     /// Create a systemd-boot entry config
-    pub fn make_config(
-        &self,
-        vmlinuz: &str,
-        initrd: &str,
-        distro: &str,
-        esp_path: &Path,
-        bootarg: &str,
-        force_write: bool,
-    ) -> Result<()> {
+    pub fn make_config(&self, config: &Config, force_write: bool) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend
-        let entries_path = esp_path.join(REL_ENTRY_PATH);
+        let entries_path = config.esp_mountpoint.join(REL_ENTRY_PATH);
         if !entries_path.exists() {
             println_with_prefix!("{} does not exist. Doing nothing.", entries_path.display());
             println_with_prefix!(
@@ -153,12 +149,12 @@ impl Kernel {
             );
             println_with_prefix!(
                 "Or, if your ESP mountpoint is not at \"{}\", please edit {}.",
-                esp_path.display(),
+                config.esp_mountpoint.display(),
                 CONF_PATH
             );
             return Err(anyhow!("{} not found", entries_path.display()));
         }
-        let entry_path = entries_path.join(self.to_string());
+        let entry_path = entries_path.join(self.to_string() + ".conf");
         // do not override existed entry file until forced to do so
         if entry_path.exists() && !force_write {
             let overwrite = Confirm::with_theme(&ColorfulTheme::default())
@@ -173,7 +169,7 @@ impl Kernel {
                 return Ok(());
             }
             println_with_prefix!("Overwriting {} ...", entry_path.display());
-            self.make_config(vmlinuz, initrd, distro, esp_path, bootarg, overwrite)?;
+            self.make_config(config, overwrite)?;
             return Ok(());
         }
         println_with_prefix!(
@@ -181,18 +177,22 @@ impl Kernel {
             self,
             entry_path.display()
         );
-        let (vmlinuz_file, initrd_file) = self.parse_filenames(vmlinuz, initrd);
         // Generate entry config
-        let title = format!("title {} ({})\n", distro, self);
-        let vmlinuz = format!("linux /{}{}\n", REL_DEST_PATH, vmlinuz_file);
+        let title = format!("title {} ({})\n", config.distro, self);
+        let vmlinuz = format!("linux /{}{}\n", REL_DEST_PATH, self.vmlinuz);
         // automatically detect Intel ucode and write the config
-        let ucode = if esp_path.join(REL_DEST_PATH).join(UCODE).exists() {
+        let ucode = if config
+            .esp_mountpoint
+            .join(REL_DEST_PATH)
+            .join(UCODE)
+            .exists()
+        {
             format!("initrd /{}{}\n", REL_DEST_PATH, UCODE)
         } else {
             String::new()
         };
-        let initrd = format!("initrd /{}{}\n", REL_DEST_PATH, initrd_file);
-        let options = format!("options {}", bootarg);
+        let initrd = format!("initrd /{}{}\n", REL_DEST_PATH, self.initrd);
+        let options = format!("options {}", config.bootarg);
         let content = title + &vmlinuz + &ucode + &initrd + &options;
         fs::write(entry_path, content)?;
 
@@ -200,30 +200,25 @@ impl Kernel {
     }
 
     // Try to remove a kernel
-    pub fn remove(&self, vmlinuz: &str, initrd: &str, esp_path: &Path) -> Result<()> {
-        let kernel_path = esp_path.join(REL_DEST_PATH);
-        let (vmlinuz, initrd) = self.parse_filenames(vmlinuz, initrd);
+    pub fn remove(&self, config: &Config) -> Result<()> {
+        let kernel_path = config.esp_mountpoint.join(REL_DEST_PATH);
         println_with_prefix!("Removing {} kernel ...", self);
-        fs::remove_file(kernel_path.join(vmlinuz))?;
-        fs::remove_file(kernel_path.join(initrd))?;
+        fs::remove_file(kernel_path.join(&self.vmlinuz))?;
+        fs::remove_file(kernel_path.join(&self.initrd))?;
         println_with_prefix!("Removing {} boot entry ...", self);
-        fs::remove_file(esp_path.join(format!("loader/entries/{}.conf", self)))?;
+        fs::remove_file(
+            config
+                .esp_mountpoint
+                .join(format!("loader/entries/{}.conf", self)),
+        )?;
 
         Ok(())
     }
 
     #[inline]
-    pub fn install_and_make_config(
-        &self,
-        vmlinuz: &str,
-        initrd: &str,
-        distro: &str,
-        esp_path: &Path,
-        bootarg: &str,
-        force_write: bool,
-    ) -> Result<()> {
-        self.install(vmlinuz, initrd, esp_path)?;
-        self.make_config(vmlinuz, initrd, distro, esp_path, bootarg, force_write)?;
+    pub fn install_and_make_config(&self, config: &Config, force_write: bool) -> Result<()> {
+        self.install(config)?;
+        self.make_config(config, force_write)?;
 
         Ok(())
     }
@@ -231,13 +226,19 @@ impl Kernel {
 
 #[test]
 fn test_kernel_struct() {
-    assert_eq!(Kernel::parse("0.0.0-unknown").unwrap(), Kernel::default())
+    assert_eq!(
+        Kernel::parse("0.0.0-unknown", &Config::default()).unwrap(),
+        Kernel::default()
+    )
 }
 
 #[test]
 fn test_kernel_display() {
     assert_eq!(
-        format!("{}", Kernel::parse("0.0.0-unknown").unwrap()),
+        format!(
+            "{}",
+            Kernel::parse("0.0.0-unknown", &Config::default()).unwrap()
+        ),
         "0.0.0-unknown"
     )
 }
