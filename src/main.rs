@@ -86,6 +86,12 @@ fn init(config: &Config) -> Result<Kernel> {
 }
 
 fn main() -> Result<()> {
+    // CLI
+    let matches: Interface = from_env();
+    if matches.version {
+        println_with_prefix!(env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
     // Read config
     let config: Config = toml::from_slice(&fs::read(CONF_PATH)?)?;
     // the record file of installed kernels, use empty value if not found
@@ -99,12 +105,6 @@ fn main() -> Result<()> {
         // Create the folder structure for the record of installed kernels
         fs::create_dir_all(Path::new(INSTALLED_PATH).parent().unwrap())?;
         serde_json::to_writer(fs::File::create(INSTALLED_PATH)?, &Vec::<String>::new())?;
-    }
-    // CLI
-    let matches: Interface = from_env();
-    if matches.version {
-        println_with_prefix!(env!("CARGO_PKG_VERSION"));
-        return Ok(());
     }
     // Switch table
     match matches.nested {
