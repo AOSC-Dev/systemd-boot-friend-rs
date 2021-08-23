@@ -1,0 +1,5 @@
+title <%- distro %> (<%- kernel %>)
+linux /<%- REL_DEST_PATH %><%- vmlinuz %><% if let Some(u) = ucode { %>
+initrd /<%- REL_DEST_PATH %><%- u %><% } %>
+initrd /<%- REL_DEST_PATH %><%- initrd %>
+options <%- options %>
