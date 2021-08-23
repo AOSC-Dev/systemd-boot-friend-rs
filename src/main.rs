@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use argh::from_env;
 use cli::{Interface, SubCommandEnum};
+use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Select};
 use kernel::Kernel;
 use serde::Deserialize;
@@ -19,7 +20,7 @@ const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
 const INSTALLED_PATH: &str = "/var/lib/systemd-boot-friend/installed.json";
 
 #[derive(Debug, Deserialize)]
-struct Config {
+pub struct Config {
     #[serde(rename = "VMLINUZ")]
     vmlinuz: String,
     #[serde(rename = "INITRD")]
@@ -30,6 +31,18 @@ struct Config {
     esp_mountpoint: PathBuf,
     #[serde(rename = "BOOTARG")]
     bootarg: String,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config {
+            vmlinuz: "vmlinuz-{VERSION}-{LOCALVERSION}".to_owned(),
+            initrd: "initramfs-{VERSION}-{LOCALVERSION}.img".to_owned(),
+            distro: "AOSC OS".to_owned(),
+            esp_mountpoint: PathBuf::from("/efi"),
+            bootarg: String::new(),
+        }
+    }
 }
 
 /// Choose a kernel using dialoguer
@@ -47,20 +60,15 @@ fn choose_kernel(kernels: &[Kernel]) -> Result<Kernel> {
 }
 
 /// Initialize the default environment for friend
-fn init(
-    vmlinuz: &str,
-    initrd: &str,
-    distro: &str,
-    esp_path: &Path,
-    bootarg: &str,
-) -> Result<Kernel> {
+fn init(config: &Config) -> Result<Kernel> {
     // use bootctl to install systemd-boot
     println_with_prefix!("Initializing systemd-boot ...");
     Command::new("bootctl")
         .arg("install")
         .arg(
             "--esp=".to_owned()
-                + esp_path
+                + config
+                    .esp_mountpoint
                     .to_str()
                     .ok_or_else(|| anyhow!("Invalid ESP_MOUNTPOINT"))?,
         )
@@ -68,11 +76,11 @@ fn init(
         .spawn()?;
     // create folder structure
     println_with_prefix!("Creating folder structure for friend ...");
-    fs::create_dir_all(esp_path.join(REL_DEST_PATH))?;
+    fs::create_dir_all(config.esp_mountpoint.join(REL_DEST_PATH))?;
     // choose the kernel to install and
     // write the entry config file
-    let kernel = choose_kernel(&Kernel::list_kernels()?)?;
-    kernel.install_and_make_config(vmlinuz, initrd, distro, esp_path, bootarg, false)?;
+    let kernel = choose_kernel(&Kernel::list_kernels(config)?)?;
+    kernel.install_and_make_config(config, false)?;
 
     Ok(kernel)
 }
@@ -85,7 +93,7 @@ fn main() -> Result<()> {
     if let Ok(f) = fs::read(INSTALLED_PATH) {
         installed_kernels = serde_json::from_slice::<Vec<String>>(&f)?
             .iter()
-            .map(|s| Kernel::parse(s))
+            .map(|s| Kernel::parse(s, &config))
             .collect::<Result<Vec<Kernel>>>()?;
     } else {
         // Create the folder structure for the record of installed kernels
@@ -102,17 +110,11 @@ fn main() -> Result<()> {
     match matches.nested {
         Some(s) => match s {
             SubCommandEnum::Init(_) => {
-                installed_kernels.push(init(
-                    &config.vmlinuz,
-                    &config.initrd,
-                    &config.distro,
-                    &config.esp_mountpoint,
-                    &config.bootarg,
-                )?);
+                installed_kernels.push(init(&config)?);
             }
             SubCommandEnum::List(_) => {
                 // list available kernels
-                for (i, k) in Kernel::list_kernels()?.iter().enumerate() {
+                for (i, k) in Kernel::list_kernels(&config)?.iter().enumerate() {
                     println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k);
                 }
             }
@@ -121,27 +123,20 @@ fn main() -> Result<()> {
                     // the target can be both the number in
                     // the list and the name of the kernel
                     Some(n) => match n.parse::<usize>() {
-                        Ok(num) => Kernel::list_kernels()?
+                        Ok(num) => Kernel::list_kernels(&config)?
                             .get(num - 1)
                             .ok_or_else(|| anyhow!("Invalid kernel number"))?
                             .clone(),
-                        Err(_) => Kernel::parse(&n)?,
+                        Err(_) => Kernel::parse(&n, &config)?,
                     },
                     // install the newest kernel
                     // when no target is given
-                    None => Kernel::list_kernels()?
+                    None => Kernel::list_kernels(&config)?
                         .first()
                         .ok_or_else(|| anyhow!("No kernel found"))?
                         .clone(),
                 };
-                kernel.install_and_make_config(
-                    &config.vmlinuz,
-                    &config.initrd,
-                    &config.distro,
-                    &config.esp_mountpoint,
-                    &config.bootarg,
-                    args.force,
-                )?;
+                kernel.install_and_make_config(&config, args.force)?;
                 installed_kernels.push(kernel);
             }
             SubCommandEnum::ListInstalled(_) => {
@@ -158,27 +153,20 @@ fn main() -> Result<()> {
                             .get(num - 1)
                             .ok_or_else(|| anyhow!("Invalid kernel number"))?
                             .clone(),
-                        Err(_) => Kernel::parse(&n)?,
+                        Err(_) => Kernel::parse(&n, &config)?,
                     },
                     // select the kernel to remove
                     // when no target is given
                     None => choose_kernel(&installed_kernels)?,
                 };
-                kernel.remove(&config.vmlinuz, &config.initrd, &config.esp_mountpoint)?;
+                kernel.remove(&config)?;
                 installed_kernels.retain(|k| *k != kernel);
             }
         },
         None => {
-            let kernel = choose_kernel(&Kernel::list_kernels()?)?;
+            let kernel = choose_kernel(&Kernel::list_kernels(&config)?)?;
             // make sure the kernel selected is installed
-            kernel.install_and_make_config(
-                &config.vmlinuz,
-                &config.initrd,
-                &config.distro,
-                &config.esp_mountpoint,
-                &config.bootarg,
-                false,
-            )?;
+            kernel.install_and_make_config(&config, false)?;
             installed_kernels.push(kernel);
         }
     }
