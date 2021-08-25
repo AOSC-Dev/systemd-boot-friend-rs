@@ -14,13 +14,13 @@ const REL_ENTRY_PATH: &str = "loader/entries/";
 
 #[derive(TemplateOnce)]
 #[template(path = "entry.stpl")]
-struct Entry {
-    distro: String,
-    kernel: String,
-    vmlinuz: String,
-    ucode: Option<String>,
-    initrd: String,
-    options: String,
+struct Entry<'a> {
+    distro: &'a str,
+    kernel: &'a str,
+    vmlinuz: &'a str,
+    ucode: Option<&'a str>,
+    initrd: &'a str,
+    options: &'a str,
 }
 
 /// A kernel struct for parsing kernel filenames
@@ -54,7 +54,7 @@ impl FromStr for Kernel {
     type Err = anyhow::Error;
 
     fn from_str(text: &str) -> Result<Self> {
-        // Split the kernel filename into 3 parts in order to determine
+        // Split the kernel filename into 2 parts in order to determine
         // the version and the localversion of the kernel
         let mut splitted_kernel_name = text.splitn(2, '-');
         let version = Version::parse(
@@ -194,21 +194,21 @@ impl Kernel {
         fs::write(
             entry_path,
             Entry {
-                distro: config.distro.to_owned(),
-                kernel: self.to_string(),
-                vmlinuz: self.vmlinuz.to_owned(),
+                distro: &config.distro,
+                kernel: &self.to_string(),
+                vmlinuz: &self.vmlinuz,
                 ucode: if config
                     .esp_mountpoint
                     .join(REL_DEST_PATH)
                     .join(UCODE)
                     .exists()
                 {
-                    Some(UCODE.to_owned())
+                    Some(UCODE)
                 } else {
                     None
                 },
-                initrd: self.initrd.to_owned(),
-                options: config.bootarg.to_owned(),
+                initrd: &self.initrd,
+                options: &config.bootarg,
             }
             .render_once()?,
         )?;
