@@ -163,6 +163,13 @@ fn main() -> Result<()> {
                 kernel.remove(&config)?;
                 installed_kernels.retain(|k| *k != kernel);
             }
+            SubCommandEnum::Update(_) => {
+                let kernels = Kernel::list_kernels(&config)?;
+                for k in kernels.iter() {
+                    k.install_and_make_config(&config, true)?;
+                }
+                installed_kernels = kernels;
+            }
         },
         None => {
             let kernel = choose_kernel(&Kernel::list_kernels(&config)?)?;

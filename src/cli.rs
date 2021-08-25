@@ -18,6 +18,7 @@ pub enum SubCommandEnum {
     Install(Install),
     ListInstalled(ListInstalled),
     Remove(Remove),
+    Update(Update),
 }
 
 #[derive(FromArgs, Debug)]
@@ -53,3 +54,8 @@ pub struct Remove {
     #[argh(positional)]
     pub target: Option<String>,
 }
+
+#[derive(FromArgs, Debug)]
+#[argh(subcommand, name = "update")]
+/// Install all kernels and update boot entries
+pub struct Update {}
