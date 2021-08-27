@@ -1,8 +1,13 @@
 [package]
 name = "systemd-boot-friend-rs"
 version = "0.8.2"
+license = "MIT"
 authors = ["Kaiyang Wu <origincode@aosc.io>"]
 edition = "2018"
+description = "Kernel version manager for systemd-boot"
+repository = "https://github.com/AOSC-Dev/systemd-boot-friend-rs"
+homepage = "https://github.com/AOSC-Dev/systemd-boot-friend-rs"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
