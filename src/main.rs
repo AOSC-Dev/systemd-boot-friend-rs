@@ -11,8 +11,10 @@ use std::{
 };
 
 use kernel::Kernel;
+use i18n::I18N_LOADER;
 
 mod cli;
+mod i18n;
 mod kernel;
 mod macros;
 
@@ -51,7 +53,7 @@ fn read_config() -> Result<Config> {
     Ok(if let Ok(f) = fs::read(CONF_PATH) {
         toml::from_slice(&f)?
     } else {
-        println_with_prefix!("{} is missing! Creating a default one ...", CONF_PATH);
+        println_with_prefix!("{}", fl!("conf_default", conf_path = CONF_PATH));
         fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
         fs::write(CONF_PATH, toml::to_string_pretty(&Config::default())?)?;
         Config::default()
@@ -61,7 +63,7 @@ fn read_config() -> Result<Config> {
 /// Choose a kernel using dialoguer
 fn choose_kernel(kernels: &[Kernel]) -> Result<Kernel> {
     if kernels.is_empty() {
-        return Err(anyhow!("Empty list"));
+        return Err(anyhow!(fl!("empty_list")));
     }
     // build dialoguer Select for kernel selection
     let n = Select::with_theme(&ColorfulTheme::default())
@@ -75,7 +77,7 @@ fn choose_kernel(kernels: &[Kernel]) -> Result<Kernel> {
 /// Initialize the default environment for friend
 fn init(config: &Config) -> Result<Kernel> {
     // use bootctl to install systemd-boot
-    println_with_prefix!("Initializing systemd-boot ...");
+    println_with_prefix_and_fl!("initialize");
     Command::new("bootctl")
         .arg("install")
         .arg(
@@ -83,12 +85,12 @@ fn init(config: &Config) -> Result<Kernel> {
                 + config
                     .esp_mountpoint
                     .to_str()
-                    .ok_or_else(|| anyhow!("Invalid ESP_MOUNTPOINT"))?,
+                    .ok_or_else(|| anyhow!(fl!("invalid_esp")))?,
         )
         .stderr(Stdio::null())
         .spawn()?;
     // create folder structure
-    println_with_prefix!("Creating folder structure for friend ...");
+    println_with_prefix_and_fl!("create_folder");
     fs::create_dir_all(config.esp_mountpoint.join(REL_DEST_PATH))?;
     // choose the kernel to install and
     // write the entry config file
@@ -138,7 +140,7 @@ fn main() -> Result<()> {
                     Some(n) => match n.parse::<usize>() {
                         Ok(num) => Kernel::list_kernels(&config)?
                             .get(num - 1)
-                            .ok_or_else(|| anyhow!("Invalid kernel number"))?
+                            .ok_or_else(|| anyhow!(fl!("invalid_num")))?
                             .clone(),
                         Err(_) => Kernel::parse(&n, &config)?,
                     },
@@ -146,7 +148,7 @@ fn main() -> Result<()> {
                     // when no target is given
                     None => Kernel::list_kernels(&config)?
                         .first()
-                        .ok_or_else(|| anyhow!("No kernel found"))?
+                        .ok_or_else(|| anyhow!(fl!("no_kernel")))?
                         .clone(),
                 };
                 kernel.install_and_make_config(&config, args.force)?;
@@ -164,7 +166,7 @@ fn main() -> Result<()> {
                     Some(n) => match n.parse::<usize>() {
                         Ok(num) => installed_kernels
                             .get(num - 1)
-                            .ok_or_else(|| anyhow!("Invalid kernel number"))?
+                            .ok_or_else(|| anyhow!(fl!("invalid_num")))?
                             .clone(),
                         Err(_) => Kernel::parse(&n, &config)?,
                     },

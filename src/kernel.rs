@@ -5,7 +5,9 @@ use sailfish::TemplateOnce;
 use semver::Version;
 use std::{fmt, fs, path::PathBuf};
 
-use crate::{println_with_prefix, Config, CONF_PATH, REL_DEST_PATH};
+use crate::{
+    fl, println_with_prefix, println_with_prefix_and_fl, Config, CONF_PATH, REL_DEST_PATH,
+};
 
 const SRC_PATH: &str = "/boot/";
 const UCODE: &str = "intel-ucode.img";
@@ -60,7 +62,7 @@ impl FromStr for Kernel {
         let version = Version::parse(
             splitted_kernel_name
                 .next()
-                .ok_or_else(|| anyhow!("invalid kernel filename"))?,
+                .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?,
         )?;
         let localversion = splitted_kernel_name.next().unwrap_or("unknown").to_owned();
 
@@ -126,19 +128,23 @@ impl Kernel {
         let dest_path = config.esp_mountpoint.join(REL_DEST_PATH);
         let src_path = PathBuf::from(SRC_PATH);
         if !dest_path.exists() {
-            println_with_prefix!("{} does not exist. Doing nothing.", dest_path.display());
-            println_with_prefix!(
-                "If you wish to use systemd-boot, execute `systemd-boot-friend init` first."
+            println_with_prefix_and_fl!(
+                "info_path_not_exist",
+                path = dest_path.to_string_lossy(),
+                esp = config.esp_mountpoint.to_string_lossy(),
+                conf = CONF_PATH
             );
-            println_with_prefix!(
-                r#"Or, if your ESP mountpoint is not at "{}", please edit {}."#,
-                config.esp_mountpoint.display(),
-                CONF_PATH
-            );
-            return Err(anyhow!("{} not found", dest_path.display()));
+            return Err(anyhow!(
+                "{}",
+                fl!("err_path_not_exist", path = dest_path.to_string_lossy())
+            ));
         }
         // generate the path to the source files
-        println_with_prefix!("Installing {} to {} ...", self, dest_path.display());
+        println_with_prefix_and_fl!(
+            "install",
+            kernel = self.to_string(),
+            path = dest_path.to_string_lossy()
+        );
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
         fs::copy(src_path.join(&self.vmlinuz), dest_path.join(&self.vmlinuz))?;
@@ -146,7 +152,7 @@ impl Kernel {
         // copy Intel ucode if exists
         let ucode_path = src_path.join(UCODE);
         if ucode_path.exists() {
-            println_with_prefix!("intel-ucode detected. Installing ...");
+            println_with_prefix_and_fl!("install_ucode");
             fs::copy(ucode_path, dest_path.join(UCODE))?;
         }
 
@@ -158,39 +164,36 @@ impl Kernel {
         // if the path does not exist, ask the user for initializing friend
         let entries_path = config.esp_mountpoint.join(REL_ENTRY_PATH);
         if !entries_path.exists() {
-            println_with_prefix!("{} does not exist. Doing nothing.", entries_path.display());
-            println_with_prefix!(
-                "If you wish to use systemd-boot, execute `systemd-boot-friend init` first."
+            println_with_prefix_and_fl!(
+                "info_path_not_exist",
+                path = entries_path.to_string_lossy(),
+                esp = config.esp_mountpoint.to_string_lossy(),
+                conf = CONF_PATH
             );
-            println_with_prefix!(
-                r#"Or, if your ESP mountpoint is not at "{}", please edit {}."#,
-                config.esp_mountpoint.display(),
-                CONF_PATH
-            );
-            return Err(anyhow!("{} not found", entries_path.display()));
+            return Err(anyhow!(
+                "{}",
+                fl!("err_path_not_exist", path = entries_path.to_string_lossy())
+            ));
         }
         let entry_path = entries_path.join(self.to_string() + ".conf");
         // do not override existed entry file until forced to do so
         if entry_path.exists() && !force_write {
             let overwrite = Confirm::with_theme(&ColorfulTheme::default())
-                .with_prompt(format!(
-                    "{} already exists. Overwrite?",
-                    entry_path.display()
-                ))
+                .with_prompt(fl!("ask_overwrite", entry = entry_path.to_string_lossy()))
                 .default(false)
                 .interact()?;
             if !overwrite {
-                println_with_prefix!("Doing nothing on this file.");
+                println_with_prefix_and_fl!("no_overwrite");
                 return Ok(());
             }
-            println_with_prefix!("Overwriting {} ...", entry_path.display());
+            println_with_prefix_and_fl!("overwrite", entry = entry_path.to_string_lossy());
             self.make_config(config, overwrite)?;
             return Ok(());
         }
-        println_with_prefix!(
-            "Creating boot entry for {} at {} ...",
-            self,
-            entry_path.display()
+        println_with_prefix_and_fl!(
+            "create_entry",
+            kernel = self.to_string(),
+            path = entry_path.to_string_lossy()
         );
         // Generate entry config
         fs::write(
@@ -221,10 +224,10 @@ impl Kernel {
     // Try to remove a kernel
     pub fn remove(&self, config: &Config) -> Result<()> {
         let kernel_path = config.esp_mountpoint.join(REL_DEST_PATH);
-        println_with_prefix!("Removing {} kernel ...", self);
+        println_with_prefix_and_fl!("remove_kernel", kernel = self.to_string());
         fs::remove_file(kernel_path.join(&self.vmlinuz))?;
         fs::remove_file(kernel_path.join(&self.initrd))?;
-        println_with_prefix!("Removing {} boot entry ...", self);
+        println_with_prefix_and_fl!("remove_entry", kernel = self.to_string());
         fs::remove_file(
             config
                 .esp_mountpoint
