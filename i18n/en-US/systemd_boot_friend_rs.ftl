@@ -1,12 +1,11 @@
 conf_default = {$conf_path} is missing! Creating a default one ...
-empty_list = Empty list
+empty_list = Empty kernel list
 invalid_esp = Invalid ESP_MOUNTPOINT
 invalid_num = Invalid kernel number
 no_kernel = No kernel found
 invalid_kernel_filename = Invalid kernel filename
-info_path_not_exist = {$path} does not exist. Doing nothing.
-    If you wish to use systemd-boot, execute `systemd-boot-friend init` first.
-    Or, if your ESP mountpoint is not at {$esp}, please edit {$conf}.
+info_path_not_exist = It seems that you have not initialized systemd-boot-friend yet.
+    systemd-boot-friend can help you install and configure systemd-boot. Simply execute `systemd-boot-friend init`.
 err_path_not_exist = {$path} not found
 
 initialize = Initializing systemd-boot ...

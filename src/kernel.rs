@@ -6,7 +6,7 @@ use semver::Version;
 use std::{fmt, fs, path::PathBuf};
 
 use crate::{
-    fl, println_with_prefix, println_with_prefix_and_fl, Config, CONF_PATH, REL_DEST_PATH,
+    fl, println_with_prefix, println_with_prefix_and_fl, Config, REL_DEST_PATH,
 };
 
 const SRC_PATH: &str = "/boot/";
@@ -129,10 +129,7 @@ impl Kernel {
         let src_path = PathBuf::from(SRC_PATH);
         if !dest_path.exists() {
             println_with_prefix_and_fl!(
-                "info_path_not_exist",
-                path = dest_path.to_string_lossy(),
-                esp = config.esp_mountpoint.to_string_lossy(),
-                conf = CONF_PATH
+                "info_path_not_exist"
             );
             return Err(anyhow!(
                 "{}",
@@ -165,10 +162,7 @@ impl Kernel {
         let entries_path = config.esp_mountpoint.join(REL_ENTRY_PATH);
         if !entries_path.exists() {
             println_with_prefix_and_fl!(
-                "info_path_not_exist",
-                path = entries_path.to_string_lossy(),
-                esp = config.esp_mountpoint.to_string_lossy(),
-                conf = CONF_PATH
+                "info_path_not_exist"
             );
             return Err(anyhow!(
                 "{}",
