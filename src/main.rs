@@ -3,7 +3,7 @@ use argh::from_env;
 use cli::{Interface, SubCommandEnum};
 use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Select};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -20,7 +20,7 @@ const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
 const INSTALLED_PATH: &str = "/var/lib/systemd-boot-friend/installed.json";
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     #[serde(rename = "VMLINUZ")]
     vmlinuz: String,
@@ -44,6 +44,18 @@ impl Default for Config {
             bootarg: String::new(),
         }
     }
+}
+
+/// Read config, create a default one if the file is missing
+fn read_config() -> Result<Config> {
+    Ok(if let Ok(f) = fs::read(CONF_PATH) {
+        toml::from_slice(&f)?
+    } else {
+        println_with_prefix!("{} is missing! Creating a default one ...", CONF_PATH);
+        fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
+        fs::write(CONF_PATH, toml::to_string_pretty(&Config::default())?)?;
+        Config::default()
+    })
 }
 
 /// Choose a kernel using dialoguer
@@ -94,7 +106,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
     // Read config
-    let config: Config = toml::from_slice(&fs::read(CONF_PATH)?)?;
+    let config = read_config()?;
     // the record file of installed kernels, use empty value if not found
     let mut installed_kernels = Vec::new();
     if let Ok(f) = fs::read(INSTALLED_PATH) {

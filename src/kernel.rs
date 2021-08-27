@@ -63,6 +63,7 @@ impl FromStr for Kernel {
                 .ok_or_else(|| anyhow!("invalid kernel filename"))?,
         )?;
         let localversion = splitted_kernel_name.next().unwrap_or("unknown").to_owned();
+
         Ok(Self {
             version,
             localversion,
@@ -115,6 +116,7 @@ impl Kernel {
         // Sort the vector, thus the kernel filenames are
         // arranged with versions from newer to older
         kernels.sort_by(|a, b| b.cmp(a));
+
         Ok(kernels)
     }
 
