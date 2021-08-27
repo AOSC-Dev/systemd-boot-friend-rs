@@ -1,6 +1,6 @@
 # Your systemd-boot's best friend ever (Implemented in Rust)
 
-A kernel version manager for systemd-boot and AOSC OS
+A kernel version manager for systemd-boot
 
 ## Usage
 
