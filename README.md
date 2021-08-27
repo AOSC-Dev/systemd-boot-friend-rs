@@ -24,6 +24,8 @@ executing the following command.
 systemd-boot-friend --help
 ```
 
+For further information, visit https://wiki.aosc.io/software/systemd-boot-friend/
+
 ## Installation
 
 ```bash
