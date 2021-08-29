@@ -1,11 +1,11 @@
 conf_default = {$conf_path} 不存在！正在建立默認配置檔...
-empty_list = 內核列表為空
+empty_list = 核心列表為空
 invalid_esp = ESP_MOUNTPOINT 不正確
-invalid_num = 內核序號不正確
-no_kernel = 找不到內核
-invalid_kernel_filename = 內核檔案名不正確
+invalid_num = 核心序號不正確
+no_kernel = 找不到核心
+invalid_kernel_filename = 核心檔案名稱不正確
 info_path_not_exist = systemd-boot-friend 似乎尚未初始化。
-    執行 `systemd-boot-friend init` 即可安裝並配置 systemd-boot。
+    執行 `systemd-boot-friend init` 即可安裝並設定 systemd-boot。
 err_path_not_exist = {$path} 不存在
 
 initialize = 正在初始化 systemd-boot ...
@@ -16,5 +16,5 @@ ask_overwrite = {$entry} 已存在。是否覆寫該檔案？
 no_overwrite = 檔案未作修改。
 overwrite = 正在覆寫 {$entry} ...
 create_entry = 正在 {$path} 建立 {$kernel} 啟動項目...
-remove_kernel = 正在刪除 {$kernel} 內核檔案...
+remove_kernel = 正在刪除 {$kernel} 核心檔案...
 remove_entry = 正在刪除 {$kernel} 啟動項目...
