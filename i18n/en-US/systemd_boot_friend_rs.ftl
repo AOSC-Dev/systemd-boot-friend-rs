@@ -1,4 +1,5 @@
-conf_default = {$conf_path} is missing! Creating a default one ...
+conf_default = {$conf_path} is missing! Generating a template ...
+edit_conf = You may need to edit {$conf_path} before continuing
 empty_list = Empty kernel list
 invalid_esp = Invalid ESP_MOUNTPOINT
 invalid_num = Invalid kernel number

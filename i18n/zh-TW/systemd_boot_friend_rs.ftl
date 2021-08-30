@@ -1,4 +1,5 @@
-conf_default = {$conf_path} 不存在！正在建立默認配置檔...
+conf_default = {$conf_path} 不存在！正在產生模板...
+edit_conf = 在繼續操作前，您可能需要修改 {$conf_path}。
 empty_list = 核心列表為空
 invalid_esp = ESP_MOUNTPOINT 不正確
 invalid_num = 核心序號不正確

@@ -10,8 +10,8 @@ use std::{
     process::{Command, Stdio},
 };
 
-use kernel::Kernel;
 use i18n::I18N_LOADER;
+use kernel::Kernel;
 
 mod cli;
 mod i18n;
@@ -50,14 +50,15 @@ impl Default for Config {
 
 /// Read config, create a default one if the file is missing
 fn read_config() -> Result<Config> {
-    Ok(if let Ok(f) = fs::read(CONF_PATH) {
-        toml::from_slice(&f)?
-    } else {
-        println_with_prefix!("{}", fl!("conf_default", conf_path = CONF_PATH));
-        fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
-        fs::write(CONF_PATH, toml::to_string_pretty(&Config::default())?)?;
-        Config::default()
-    })
+    match fs::read(CONF_PATH) {
+        Ok(f) => Ok(toml::from_slice(&f)?),
+        Err(_) => {
+            println_with_prefix_and_fl!("conf_default", conf_path = CONF_PATH);
+            fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
+            fs::write(CONF_PATH, toml::to_string_pretty(&Config::default())?)?;
+            Err(anyhow!(fl!("edit_conf", conf_path = CONF_PATH)))
+        }
+    }
 }
 
 /// Choose a kernel using dialoguer

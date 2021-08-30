@@ -1,4 +1,5 @@
-conf_default = {$conf_path} 不存在！正在创建默认配置文件...
+conf_default = {$conf_path} 不存在！正在生成配置样例...
+edit_conf = 在继续操作前，您可能需要修改 {$conf_path}
 empty_list = 内核列表为空
 invalid_esp = ESP_MOUNTPOINT 不正确
 invalid_num = 内核序号不正确
