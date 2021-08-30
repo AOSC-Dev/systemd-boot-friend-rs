@@ -50,15 +50,15 @@ impl Default for Config {
 
 /// Read config, create a default one if the file is missing
 fn read_config() -> Result<Config> {
-    match fs::read(CONF_PATH) {
-        Ok(f) => Ok(toml::from_slice(&f)?),
-        Err(_) => {
+    fs::read(CONF_PATH).map_or_else(
+        |_| {
             println_with_prefix_and_fl!("conf_default", conf_path = CONF_PATH);
             fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
             fs::write(CONF_PATH, toml::to_string_pretty(&Config::default())?)?;
             Err(anyhow!(fl!("edit_conf", conf_path = CONF_PATH)))
-        }
-    }
+        },
+        |f| Ok(toml::from_slice(&f)?),
+    )
 }
 
 /// Choose a kernel using dialoguer
