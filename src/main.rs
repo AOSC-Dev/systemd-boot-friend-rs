@@ -180,8 +180,11 @@ fn main() -> Result<()> {
             }
             SubCommandEnum::Update(_) => {
                 let kernels = Kernel::list_kernels(&config)?;
-                for k in installed_kernels.iter() {
-                    k.remove(&config)?;
+                loop {
+                    match installed_kernels.pop() {
+                        Some(k) => k.remove(&config)?,
+                        None => break,
+                    }
                 }
                 for k in kernels.iter() {
                     k.install_and_make_config(&config, true)?;
