@@ -822,7 +822,7 @@ dependencies = [
 
 [[package]]
 name = "systemd-boot-friend-rs"
-version = "0.9.4-alpha.0"
+version = "0.9.4"
 dependencies = [
  "anyhow",
  "argh",
