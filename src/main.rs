@@ -75,8 +75,21 @@ fn choose_kernel(kernels: &[Kernel]) -> Result<Kernel> {
     Ok(kernels[n].clone())
 }
 
+/// Update systemd-boot kernels and entries
+fn update(config: &Config, installed_kernels: &mut Vec<Kernel>, kernels: &[Kernel]) -> Result<()> {
+    while let Some(k) = installed_kernels.pop() {
+        k.remove(config)?;
+    }
+    for k in kernels.iter() {
+        k.install_and_make_config(config, true)?;
+        installed_kernels.push(k.clone());
+    }
+
+    Ok(())
+}
+
 /// Initialize the default environment for friend
-fn init(config: &Config) -> Result<Kernel> {
+fn init(config: &Config, installed_kernels: &mut Vec<Kernel>, kernels: &[Kernel]) -> Result<()> {
     // use bootctl to install systemd-boot
     println_with_prefix_and_fl!("initialize");
     Command::new("bootctl")
@@ -93,12 +106,19 @@ fn init(config: &Config) -> Result<Kernel> {
     // create folder structure
     println_with_prefix_and_fl!("create_folder");
     fs::create_dir_all(config.esp_mountpoint.join(REL_DEST_PATH))?;
-    // choose the kernel to install and
-    // write the entry config file
-    let kernel = choose_kernel(&Kernel::list_kernels(config)?)?;
-    kernel.install_and_make_config(config, false)?;
+    // Update systemd-boot kernels and entries
+    update(config, installed_kernels, kernels)
+}
 
-    Ok(kernel)
+#[inline]
+fn parse_num_or_filename(config: &Config, n: &str, kernels: &[Kernel]) -> Result<Kernel> {
+    Ok(match n.parse::<usize>() {
+        Ok(num) => kernels
+            .get(num - 1)
+            .ok_or_else(|| anyhow!(fl!("invalid_num")))?
+            .clone(),
+        Err(_) => Kernel::parse(n, config)?,
+    })
 }
 
 fn main() -> Result<()> {
@@ -122,12 +142,11 @@ fn main() -> Result<()> {
         fs::create_dir_all(Path::new(INSTALLED_PATH).parent().unwrap())?;
         serde_json::to_writer(fs::File::create(INSTALLED_PATH)?, &Vec::<String>::new())?;
     }
+    let kernels = Kernel::list_kernels(&config)?;
     // Switch table
     match matches.nested {
         Some(s) => match s {
-            SubCommandEnum::Init(_) => {
-                installed_kernels.push(init(&config)?);
-            }
+            SubCommandEnum::Init(_) => init(&config, &mut installed_kernels, &kernels)?,
             SubCommandEnum::List(_) => {
                 // list available kernels
                 for (i, k) in Kernel::list_kernels(&config)?.iter().enumerate() {
@@ -138,13 +157,7 @@ fn main() -> Result<()> {
                 let kernel = match args.target {
                     // the target can be both the number in
                     // the list and the name of the kernel
-                    Some(n) => match n.parse::<usize>() {
-                        Ok(num) => Kernel::list_kernels(&config)?
-                            .get(num - 1)
-                            .ok_or_else(|| anyhow!(fl!("invalid_num")))?
-                            .clone(),
-                        Err(_) => Kernel::parse(&n, &config)?,
-                    },
+                    Some(n) => parse_num_or_filename(&config, &n, &kernels)?,
                     // install the newest kernel
                     // when no target is given
                     None => Kernel::list_kernels(&config)?
@@ -164,13 +177,7 @@ fn main() -> Result<()> {
                 let kernel = match args.target {
                     // the target can be both the number in
                     // the list and the name of the kernel
-                    Some(n) => match n.parse::<usize>() {
-                        Ok(num) => installed_kernels
-                            .get(num - 1)
-                            .ok_or_else(|| anyhow!(fl!("invalid_num")))?
-                            .clone(),
-                        Err(_) => Kernel::parse(&n, &config)?,
-                    },
+                    Some(n) => parse_num_or_filename(&config, &n, &installed_kernels)?,
                     // select the kernel to remove
                     // when no target is given
                     None => choose_kernel(&installed_kernels)?,
@@ -178,19 +185,11 @@ fn main() -> Result<()> {
                 kernel.remove(&config)?;
                 installed_kernels.retain(|k| *k != kernel);
             }
-            SubCommandEnum::Update(_) => {
-                let kernels = Kernel::list_kernels(&config)?;
-                loop {
-                    match installed_kernels.pop() {
-                        Some(k) => k.remove(&config)?,
-                        None => break,
-                    }
-                }
-                for k in kernels.iter() {
-                    k.install_and_make_config(&config, true)?;
-                    installed_kernels.push(k.clone());
-                }
-            }
+            SubCommandEnum::Update(_) => update(
+                &config,
+                &mut installed_kernels,
+                &Kernel::list_kernels(&config)?,
+            )?,
         },
         None => {
             let kernel = choose_kernel(&Kernel::list_kernels(&config)?)?;
