@@ -3,11 +3,9 @@ use core::{default::Default, str::FromStr};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use sailfish::TemplateOnce;
 use semver::Version;
-use std::{fmt, fs, path::PathBuf};
+use std::{cell::RefCell, fmt, fs, path::PathBuf};
 
-use crate::{
-    fl, println_with_prefix, println_with_prefix_and_fl, Config, REL_DEST_PATH,
-};
+use crate::{fl, println_with_prefix, println_with_prefix_and_fl, Config, REL_DEST_PATH};
 
 const SRC_PATH: &str = "/boot/";
 const UCODE: &str = "intel-ucode.img";
@@ -28,10 +26,10 @@ struct Entry<'a> {
 /// A kernel struct for parsing kernel filenames
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Kernel {
-    pub version: Version,
-    pub localversion: String,
-    vmlinuz: String,
-    initrd: String,
+    version: Version,
+    localversion: String,
+    vmlinuz: RefCell<String>,
+    initrd: RefCell<String>,
 }
 
 impl Ord for Kernel {
@@ -69,8 +67,8 @@ impl FromStr for Kernel {
         Ok(Self {
             version,
             localversion,
-            vmlinuz: String::new(),
-            initrd: String::new(),
+            vmlinuz: RefCell::new(String::new()),
+            initrd: RefCell::new(String::new()),
         })
     }
 }
@@ -80,8 +78,8 @@ impl Default for Kernel {
         Self {
             version: Version::new(0, 0, 0),
             localversion: "unknown".to_owned(),
-            vmlinuz: "vmlinuz-0.0.0-unknown".to_owned(),
-            initrd: "initramfs-0.0.0-unknown.img".to_owned(),
+            vmlinuz: RefCell::new("vmlinuz-0.0.0-unknown".to_owned()),
+            initrd: RefCell::new("initramfs-0.0.0-unknown.img".to_owned()),
         }
     }
 }
@@ -89,15 +87,19 @@ impl Default for Kernel {
 impl Kernel {
     /// Parse a kernel filename
     pub fn parse(kernel_name: &str, config: &Config) -> Result<Self> {
-        let mut kernel = Self::from_str(kernel_name)?;
-        kernel.vmlinuz = config
-            .vmlinuz
-            .replace("{VERSION}", &kernel.version.to_string())
-            .replace("{LOCALVERSION}", &kernel.localversion);
-        kernel.initrd = config
-            .initrd
-            .replace("{VERSION}", &kernel.version.to_string())
-            .replace("{LOCALVERSION}", &kernel.localversion);
+        let kernel = Self::from_str(kernel_name)?;
+        kernel.vmlinuz.replace(
+            config
+                .vmlinuz
+                .replace("{VERSION}", &kernel.version.to_string())
+                .replace("{LOCALVERSION}", &kernel.localversion),
+        );
+        kernel.initrd.replace(
+            config
+                .initrd
+                .replace("{VERSION}", &kernel.version.to_string())
+                .replace("{LOCALVERSION}", &kernel.localversion),
+        );
 
         Ok(kernel)
     }
@@ -128,9 +130,7 @@ impl Kernel {
         let dest_path = config.esp_mountpoint.join(REL_DEST_PATH);
         let src_path = PathBuf::from(SRC_PATH);
         if !dest_path.exists() {
-            println_with_prefix_and_fl!(
-                "info_path_not_exist"
-            );
+            println_with_prefix_and_fl!("info_path_not_exist");
             return Err(anyhow!(
                 "{}",
                 fl!("err_path_not_exist", path = dest_path.to_string_lossy())
@@ -144,8 +144,14 @@ impl Kernel {
         );
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
-        fs::copy(src_path.join(&self.vmlinuz), dest_path.join(&self.vmlinuz))?;
-        fs::copy(src_path.join(&self.initrd), dest_path.join(&self.initrd))?;
+        fs::copy(
+            src_path.join(self.vmlinuz.borrow().as_str()),
+            dest_path.join(self.vmlinuz.borrow().as_str()),
+        )?;
+        fs::copy(
+            src_path.join(self.initrd.borrow().as_str()),
+            dest_path.join(self.initrd.borrow().as_str()),
+        )?;
         // copy Intel ucode if exists
         let ucode_path = src_path.join(UCODE);
         if ucode_path.exists() {
@@ -161,9 +167,7 @@ impl Kernel {
         // if the path does not exist, ask the user for initializing friend
         let entries_path = config.esp_mountpoint.join(REL_ENTRY_PATH);
         if !entries_path.exists() {
-            println_with_prefix_and_fl!(
-                "info_path_not_exist"
-            );
+            println_with_prefix_and_fl!("info_path_not_exist");
             return Err(anyhow!(
                 "{}",
                 fl!("err_path_not_exist", path = entries_path.to_string_lossy())
@@ -195,7 +199,7 @@ impl Kernel {
             Entry {
                 distro: &config.distro,
                 kernel: &self.to_string(),
-                vmlinuz: &self.vmlinuz,
+                vmlinuz: self.vmlinuz.borrow().as_str(),
                 ucode: if config
                     .esp_mountpoint
                     .join(REL_DEST_PATH)
@@ -206,7 +210,7 @@ impl Kernel {
                 } else {
                     None
                 },
-                initrd: &self.initrd,
+                initrd: self.initrd.borrow().as_str(),
                 options: &config.bootarg,
             }
             .render_once()?,
@@ -219,8 +223,8 @@ impl Kernel {
     pub fn remove(&self, config: &Config) -> Result<()> {
         let kernel_path = config.esp_mountpoint.join(REL_DEST_PATH);
         println_with_prefix_and_fl!("remove_kernel", kernel = self.to_string());
-        fs::remove_file(kernel_path.join(&self.vmlinuz))?;
-        fs::remove_file(kernel_path.join(&self.initrd))?;
+        fs::remove_file(kernel_path.join(self.vmlinuz.borrow().as_str()))?;
+        fs::remove_file(kernel_path.join(self.initrd.borrow().as_str()))?;
         println_with_prefix_and_fl!("remove_entry", kernel = self.to_string());
         fs::remove_file(
             config
