@@ -115,7 +115,7 @@ fn parse_num_or_filename(config: &Config, n: &str, kernels: &[Kernel]) -> Result
     Ok(match n.parse::<usize>() {
         Ok(num) => kernels
             .get(num - 1)
-            .ok_or_else(|| anyhow!(fl!("invalid_num")))?
+            .ok_or_else(|| anyhow!(fl!("invalid_index")))?
             .clone(),
         Err(_) => Kernel::parse(n, config)?,
     })
