@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use core::{default::Default, str::FromStr};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use sailfish::TemplateOnce;
@@ -86,7 +86,7 @@ impl Default for Kernel {
 
 impl Kernel {
     /// Parse a kernel filename
-    pub fn parse(kernel_name: &str, config: &Config) -> Result<Self> {
+    pub fn parse(config: &Config, kernel_name: &str) -> Result<Self> {
         let kernel = Self::from_str(kernel_name)?;
         kernel.vmlinuz.replace(
             config
@@ -110,10 +110,10 @@ impl Kernel {
         let mut kernels = fs::read_dir(MODULES_PATH)?
             .map(|k| {
                 Self::parse(
+                    config,
                     &k?.file_name()
                         .into_string()
                         .unwrap_or_else(|_| String::new()),
-                    config,
                 )
             })
             .collect::<Result<Vec<Self>>>()?;
@@ -131,10 +131,10 @@ impl Kernel {
         let src_path = PathBuf::from(SRC_PATH);
         if !dest_path.exists() {
             println_with_prefix_and_fl!("info_path_not_exist");
-            return Err(anyhow!(
+            bail!(
                 "{}",
                 fl!("err_path_not_exist", path = dest_path.to_string_lossy())
-            ));
+            );
         }
         // generate the path to the source files
         println_with_prefix_and_fl!(
@@ -168,10 +168,10 @@ impl Kernel {
         let entries_path = config.esp_mountpoint.join(REL_ENTRY_PATH);
         if !entries_path.exists() {
             println_with_prefix_and_fl!("info_path_not_exist");
-            return Err(anyhow!(
+            bail!(
                 "{}",
                 fl!("err_path_not_exist", path = entries_path.to_string_lossy())
-            ));
+            );
         }
         let entry_path = entries_path.join(self.to_string() + ".conf");
         // do not override existed entry file until forced to do so
@@ -247,7 +247,7 @@ impl Kernel {
 #[test]
 fn test_kernel_struct() {
     assert_eq!(
-        Kernel::parse("0.0.0-unknown", &Config::default()).unwrap(),
+        Kernel::parse(&Config::default(), "0.0.0-unknown").unwrap(),
         Kernel::default()
     )
 }
@@ -255,7 +255,7 @@ fn test_kernel_struct() {
 #[test]
 fn test_kernel_display() {
     assert_eq!(
-        Kernel::parse("0.0.0-unknown", &Config::default())
+        Kernel::parse(&Config::default(), "0.0.0-unknown")
             .unwrap()
             .to_string(),
         "0.0.0-unknown"

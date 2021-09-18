@@ -3,8 +3,10 @@ use argh::from_env;
 use cli::{Interface, SubCommandEnum};
 use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Select};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::HashSet,
     fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
@@ -20,7 +22,6 @@ mod macros;
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
-const INSTALLED_PATH: &str = "/var/lib/systemd-boot-friend/installed.json";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -48,17 +49,53 @@ impl Default for Config {
     }
 }
 
-/// Read config, create a default one if the file is missing
-fn read_config() -> Result<Config> {
-    fs::read(CONF_PATH).map_or_else(
-        |_| {
-            println_with_prefix_and_fl!("conf_default", conf_path = CONF_PATH);
-            fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
-            fs::write(CONF_PATH, toml::to_string_pretty(&Config::default())?)?;
-            Err(anyhow!(fl!("edit_conf", conf_path = CONF_PATH)))
-        },
-        |f| Ok(toml::from_slice(&f)?),
-    )
+/// Scan kernel files installed in systemd-boot
+fn scan_files(esp_mountpoint: &Path, template: &str) -> Result<HashSet<String>> {
+    // Construct regex for the template
+    let re = Regex::new(
+        &template
+            .replace("{VERSION}", r"(?P<version>[0-9.]+)")
+            .replace("{LOCALVERSION}", "(?P<localversion>[a-z0-9.-]+)"),
+    )?;
+    // Regex match group
+    let mut results = HashSet::new();
+    for x in fs::read_dir(esp_mountpoint.join(REL_DEST_PATH))? {
+        let filename = &x?
+            .file_name()
+            .into_string()
+            .map_err(|_| anyhow!(fl!("invalid_kernel_filename")))?;
+        if let Some(c) = re.captures(filename) {
+            let version = c
+                .name("version")
+                .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
+                .as_str();
+            let localversion = c
+                .name("localversion")
+                .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
+                .as_str();
+            results.insert(format!("{}-{}", version, localversion));
+        }
+    }
+
+    Ok(results)
+}
+
+/// Generate installed kernel list
+fn list_installed_kernels(config: &Config) -> Result<Vec<Kernel>> {
+    let vmlinuz_list = scan_files(&config.esp_mountpoint, &config.vmlinuz)?;
+    let initrd_list = scan_files(&config.esp_mountpoint, &config.initrd)?;
+    // Compare two lists, make sure
+    // each kernel was completely installed
+    let mut installed_kernels = Vec::new();
+    for i in vmlinuz_list.iter() {
+        if initrd_list.contains(i) {
+            installed_kernels.push(Kernel::parse(config, i)?);
+        }
+    }
+    // Sort the vector
+    installed_kernels.sort();
+
+    Ok(installed_kernels)
 }
 
 /// Choose a kernel using dialoguer
@@ -76,20 +113,19 @@ fn choose_kernel(kernels: &[Kernel]) -> Result<Kernel> {
 }
 
 /// Update systemd-boot kernels and entries
-fn update(config: &Config, installed_kernels: &mut Vec<Kernel>, kernels: &[Kernel]) -> Result<()> {
-    while let Some(k) = installed_kernels.pop() {
+fn update(config: &Config, installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
+    for k in installed_kernels.iter() {
         k.remove(config)?;
     }
     for k in kernels.iter() {
         k.install_and_make_config(config, true)?;
-        installed_kernels.push(k.clone());
     }
 
     Ok(())
 }
 
 /// Initialize the default environment for friend
-fn init(config: &Config, installed_kernels: &mut Vec<Kernel>, kernels: &[Kernel]) -> Result<()> {
+fn init(config: &Config, installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
     // use bootctl to install systemd-boot
     println_with_prefix_and_fl!("initialize");
     Command::new("bootctl")
@@ -117,7 +153,7 @@ fn parse_num_or_filename(config: &Config, n: &str, kernels: &[Kernel]) -> Result
             .get(num - 1)
             .ok_or_else(|| anyhow!(fl!("invalid_index")))?
             .clone(),
-        Err(_) => Kernel::parse(n, config)?,
+        Err(_) => Kernel::parse(config, n)?,
     })
 }
 
@@ -128,25 +164,23 @@ fn main() -> Result<()> {
         println_with_prefix!(env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
-    // Read config
-    let config = read_config()?;
+    // Read config, create a default one if the file is missing
+    let config = fs::read(CONF_PATH).map_or_else(
+        |_| {
+            println_with_prefix_and_fl!("conf_default", conf_path = CONF_PATH);
+            fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
+            fs::write(CONF_PATH, toml::to_string_pretty(&Config::default())?)?;
+            Err(anyhow!(fl!("edit_conf", conf_path = CONF_PATH)))
+        },
+        |f| Ok(toml::from_slice(&f)?),
+    )?;
     // the record file of installed kernels, use empty value if not found
-    let mut installed_kernels = Vec::new();
-    if let Ok(f) = fs::read(INSTALLED_PATH) {
-        installed_kernels = serde_json::from_slice::<Vec<String>>(&f)?
-            .iter()
-            .map(|s| Kernel::parse(s, &config))
-            .collect::<Result<Vec<Kernel>>>()?;
-    } else {
-        // Create the folder structure for the record of installed kernels
-        fs::create_dir_all(Path::new(INSTALLED_PATH).parent().unwrap())?;
-        serde_json::to_writer(fs::File::create(INSTALLED_PATH)?, &Vec::<String>::new())?;
-    }
+    let installed_kernels = list_installed_kernels(&config)?;
     let kernels = Kernel::list_kernels(&config)?;
     // Switch table
     match matches.nested {
         Some(s) => match s {
-            SubCommandEnum::Init(_) => init(&config, &mut installed_kernels, &kernels)?,
+            SubCommandEnum::Init(_) => init(&config, &installed_kernels, &kernels)?,
             SubCommandEnum::List(_) => {
                 // list available kernels
                 for (i, k) in Kernel::list_kernels(&config)?.iter().enumerate() {
@@ -166,7 +200,6 @@ fn main() -> Result<()> {
                         .clone(),
                 };
                 kernel.install_and_make_config(&config, args.force)?;
-                installed_kernels.push(kernel);
             }
             SubCommandEnum::ListInstalled(_) => {
                 for (i, k) in installed_kernels.iter().enumerate() {
@@ -183,27 +216,14 @@ fn main() -> Result<()> {
                     None => choose_kernel(&installed_kernels)?,
                 };
                 kernel.remove(&config)?;
-                installed_kernels.retain(|k| *k != kernel);
             }
-            SubCommandEnum::Update(_) => update(
-                &config,
-                &mut installed_kernels,
-                &Kernel::list_kernels(&config)?,
-            )?,
+            SubCommandEnum::Update(_) => {
+                update(&config, &installed_kernels, &Kernel::list_kernels(&config)?)?
+            }
         },
-        None => {
-            let kernel = choose_kernel(&Kernel::list_kernels(&config)?)?;
-            // make sure the kernel selected is installed
-            kernel.install_and_make_config(&config, false)?;
-            installed_kernels.push(kernel);
-        }
+        None => choose_kernel(&Kernel::list_kernels(&config)?)?
+            .install_and_make_config(&config, false)?,
     }
-    // Write the installed kernels file
-    installed_kernels.sort();
-    installed_kernels.dedup();
-    let installed_kernels: Vec<String> =
-        installed_kernels.iter().map(|k| format!("{}", k)).collect();
-    serde_json::to_writer(fs::File::create(INSTALLED_PATH)?, &installed_kernels)?;
 
     Ok(())
 }

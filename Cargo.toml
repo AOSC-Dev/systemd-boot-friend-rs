@@ -21,6 +21,7 @@ dialoguer = "0.8"
 semver = "1.0"
 sailfish = "0.3"
 lazy_static = "1.4"
+regex = "1.5"
 # i18n
 i18n-embed = { version = "0.13", features = ["fluent-system", "desktop-requester"]}
 i18n-embed-fl = "0.6"
