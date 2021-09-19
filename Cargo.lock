@@ -99,6 +99,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap_generate"
+version = "3.0.0-beta.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2d9b1abef93569f290952eff3c4a0a92d6767bb5158db095b4dc9a512b1c3643"
+dependencies = [
+ "clap",
+]
+
+[[package]]
 name = "console"
 version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -733,7 +742,7 @@ checksum = "71d301d4193d031abdd79ff7e3dd721168a9572ef3fe51a1517aba235bd8f86e"
 [[package]]
 name = "sailfish"
 version = "0.3.3"
-source = "git+https://github.com/OriginCode/sailfish#eab536e25861c812810b78f43395567660a0bc92"
+source = "git+https://github.com/OriginCode/sailfish?rev=5c1cdb2402f8c313e3e36a36e53b822685ce14af#5c1cdb2402f8c313e3e36a36e53b822685ce14af"
 dependencies = [
  "itoap",
  "ryu",
@@ -744,7 +753,7 @@ dependencies = [
 [[package]]
 name = "sailfish-compiler"
 version = "0.3.3"
-source = "git+https://github.com/OriginCode/sailfish#eab536e25861c812810b78f43395567660a0bc92"
+source = "git+https://github.com/OriginCode/sailfish?rev=5c1cdb2402f8c313e3e36a36e53b822685ce14af#5c1cdb2402f8c313e3e36a36e53b822685ce14af"
 dependencies = [
  "filetime",
  "home",
@@ -758,7 +767,7 @@ dependencies = [
 [[package]]
 name = "sailfish-macros"
 version = "0.3.3"
-source = "git+https://github.com/OriginCode/sailfish#eab536e25861c812810b78f43395567660a0bc92"
+source = "git+https://github.com/OriginCode/sailfish?rev=5c1cdb2402f8c313e3e36a36e53b822685ce14af#5c1cdb2402f8c313e3e36a36e53b822685ce14af"
 dependencies = [
  "proc-macro2",
  "sailfish-compiler",
@@ -864,6 +873,7 @@ version = "0.9.5-alpha.0"
 dependencies = [
  "anyhow",
  "clap",
+ "clap_generate",
  "dialoguer",
  "i18n-embed",
  "i18n-embed-fl",

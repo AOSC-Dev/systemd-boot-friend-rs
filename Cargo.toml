@@ -19,7 +19,7 @@ anyhow = "1.0"
 clap = "3.0.0-beta.4"
 dialoguer = "0.8"
 semver = "1.0"
-sailfish = { git = "https://github.com/OriginCode/sailfish" }
+sailfish = { git = "https://github.com/OriginCode/sailfish", rev = "5c1cdb2402f8c313e3e36a36e53b822685ce14af" }
 lazy_static = "1.4"
 regex = "1.5"
 # i18n
@@ -27,6 +27,10 @@ i18n-embed = { version = "0.13", features = ["fluent-system", "desktop-requester
 i18n-embed-fl = "0.6"
 rust-embed = "6.0"
 unic-langid = "0.9"
+
+[build-dependencies]
+clap = "3.0.0-beta.4"
+clap_generate = "3.0.0-beta.4"
 
 [profile.release]
 lto = true
