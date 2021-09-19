@@ -1,18 +1,16 @@
-use argh::FromArgs;
+use clap::{AppSettings, Clap, crate_version, crate_authors};
 
-#[derive(FromArgs, Debug)]
 /// Kernel Version Manager for systemd-boot
-pub struct Interface {
-    #[argh(subcommand)]
-    pub nested: Option<SubCommandEnum>,
-    #[argh(switch, short = 'V')]
-    /// show the version of systemd-boot-friend
-    pub version: bool,
+#[derive(Clap, Debug)]
+#[clap(setting = AppSettings::ColoredHelp)]
+#[clap(version = crate_version!(), author = crate_authors!())]
+pub struct Opts {
+    #[clap(subcommand)]
+    pub subcommand: Option<SubCommand>
 }
 
-#[derive(FromArgs, Debug)]
-#[argh(subcommand)]
-pub enum SubCommandEnum {
+#[derive(Clap, Debug)]
+pub enum SubCommand {
     Init(Init),
     List(List),
     Install(Install),
@@ -21,41 +19,33 @@ pub enum SubCommandEnum {
     Update(Update),
 }
 
-#[derive(FromArgs, Debug)]
-#[argh(subcommand, name = "init")]
 /// Initialize systemd-boot-friend
-pub struct Init {}
+#[derive(Clap, Debug)]
+pub struct Init;
 
-#[derive(FromArgs, Debug)]
-#[argh(subcommand, name = "list")]
 /// List all available kernels
-pub struct List {}
+#[derive(Clap, Debug)]
+pub struct List;
 
-#[derive(FromArgs, Debug)]
-#[argh(subcommand, name = "install")]
 /// Install the kernel specified
+#[derive(Clap, Debug)]
 pub struct Install {
-    #[argh(positional)]
     pub target: Option<String>,
     /// force overwrite the entry config or not
-    #[argh(switch, short = 'f')]
+    #[clap(long, short)]
     pub force: bool,
 }
 
-#[derive(FromArgs, Debug)]
-#[argh(subcommand, name = "list-installed")]
 /// List all installed kernels
-pub struct ListInstalled {}
+#[derive(Clap, Debug)]
+pub struct ListInstalled;
 
-#[derive(FromArgs, Debug)]
-#[argh(subcommand, name = "remove")]
 /// Remove the kernel specified
+#[derive(Clap, Debug)]
 pub struct Remove {
-    #[argh(positional)]
     pub target: Option<String>,
 }
 
-#[derive(FromArgs, Debug)]
-#[argh(subcommand, name = "update")]
 /// Install all kernels and update boot entries
-pub struct Update {}
+#[derive(Clap, Debug)]
+pub struct Update;

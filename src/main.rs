@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
-use argh::from_env;
-use cli::{Interface, SubCommandEnum};
+use clap::Clap;
+use cli::{Opts, SubCommand};
 use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Select};
 use regex::Regex;
@@ -159,11 +159,7 @@ fn parse_num_or_filename(config: &Config, n: &str, kernels: &[Kernel]) -> Result
 
 fn main() -> Result<()> {
     // CLI
-    let matches: Interface = from_env();
-    if matches.version {
-        println_with_prefix!(env!("CARGO_PKG_VERSION"));
-        return Ok(());
-    }
+    let matches: Opts = Opts::parse();
     // Read config, create a default one if the file is missing
     let config = fs::read(CONF_PATH).map_or_else(
         |_| {
@@ -178,16 +174,16 @@ fn main() -> Result<()> {
     let installed_kernels = list_installed_kernels(&config)?;
     let kernels = Kernel::list_kernels(&config)?;
     // Switch table
-    match matches.nested {
+    match matches.subcommand {
         Some(s) => match s {
-            SubCommandEnum::Init(_) => init(&config, &installed_kernels, &kernels)?,
-            SubCommandEnum::List(_) => {
+            SubCommand::Init(_) => init(&config, &installed_kernels, &kernels)?,
+            SubCommand::List(_) => {
                 // list available kernels
                 for (i, k) in Kernel::list_kernels(&config)?.iter().enumerate() {
                     println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k);
                 }
             }
-            SubCommandEnum::Install(args) => {
+            SubCommand::Install(args) => {
                 let kernel = match args.target {
                     // the target can be both the number in
                     // the list and the name of the kernel
@@ -201,12 +197,12 @@ fn main() -> Result<()> {
                 };
                 kernel.install_and_make_config(&config, args.force)?;
             }
-            SubCommandEnum::ListInstalled(_) => {
+            SubCommand::ListInstalled(_) => {
                 for (i, k) in installed_kernels.iter().enumerate() {
                     println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k);
                 }
             }
-            SubCommandEnum::Remove(args) => {
+            SubCommand::Remove(args) => {
                 let kernel = match args.target {
                     // the target can be both the number in
                     // the list and the name of the kernel
@@ -217,7 +213,7 @@ fn main() -> Result<()> {
                 };
                 kernel.remove(&config)?;
             }
-            SubCommandEnum::Update(_) => {
+            SubCommand::Update(_) => {
                 update(&config, &installed_kernels, &Kernel::list_kernels(&config)?)?
             }
         },
