@@ -12,21 +12,24 @@ const ROOT: &str = "completions";
 const APP: &str = "systemd-boot-friend";
 
 macro_rules! generate_shell_completions {
+    ($app:ident, $shell:ident, $($shells:ident),+) => {
+        generate_shell_completions!($app, $shell);
+        generate_shell_completions!($app, $($shells),+);
+    };
+
     ($app:ident, $shell:ident) => {
         generate::<$shell, _>(
             &mut $app,
             APP,
             &mut fs::File::create(format!("{}/{}", ROOT, $shell::file_name(APP)))?,
         );
-    }
+    };
 }
 
 fn generate_completions() -> Result<()> {
     fs::create_dir_all(ROOT)?;
     let mut app = Opts::into_app();
-    generate_shell_completions!(app, Bash);
-    generate_shell_completions!(app, Fish);
-    generate_shell_completions!(app, Zsh);
+    generate_shell_completions!(app, Bash, Zsh, Fish);
 
     Ok(())
 }

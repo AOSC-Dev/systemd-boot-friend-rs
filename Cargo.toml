@@ -9,6 +9,10 @@ repository = "https://github.com/AOSC-Dev/systemd-boot-friend-rs"
 homepage = "https://github.com/AOSC-Dev/systemd-boot-friend-rs"
 readme = "README.md"
 
+[[bin]]
+name = "systemd-boot-friend"
+path = "src/main.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -31,6 +35,8 @@ unic-langid = "0.9"
 [build-dependencies]
 clap = "3.0.0-beta.4"
 clap_generate = "3.0.0-beta.4"
+
+
 
 [profile.release]
 lto = true
