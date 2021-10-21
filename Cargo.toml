@@ -20,10 +20,10 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.5"
 anyhow = "1.0"
-clap = "3.0.0-beta.4"
+clap = "3.0.0-beta.5"
 dialoguer = "0.8"
 semver = "1.0"
-sailfish = { git = "https://github.com/OriginCode/sailfish", rev = "5c1cdb2402f8c313e3e36a36e53b822685ce14af" }
+sailfish = "0.3"
 lazy_static = "1.4"
 regex = "1.5"
 # i18n
@@ -36,7 +36,8 @@ unic-langid = "0.9"
 clap = "3.0.0-beta.4"
 clap_generate = "3.0.0-beta.4"
 
-
+[patch.crates-io]
+sailfish = { git = "https://github.com/OriginCode/sailfish", tag = "v0.3.4" }
 
 [profile.release]
 lto = true
