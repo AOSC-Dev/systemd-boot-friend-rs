@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use clap::Clap;
+use clap::Parser;
 use cli::{Opts, SubCommand};
 use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Select};

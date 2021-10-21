@@ -33,8 +33,8 @@ rust-embed = "6.0"
 unic-langid = "0.9"
 
 [build-dependencies]
-clap = "3.0.0-beta.4"
-clap_generate = "3.0.0-beta.4"
+clap = "3.0.0-beta.5"
+clap_generate = "3.0.0-beta.5"
 
 [patch.crates-io]
 sailfish = { git = "https://github.com/OriginCode/sailfish", tag = "v0.3.4" }

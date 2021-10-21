@@ -12,7 +12,6 @@ _systemd-boot-friend() {
             systemd-boot-friend)
                 cmd="systemd__boot__friend"
                 ;;
-            
             help)
                 cmd+="__help"
                 ;;
@@ -41,13 +40,12 @@ _systemd-boot-friend() {
 
     case "${cmd}" in
         systemd__boot__friend)
-            opts=" -h -V  --help --version  init list install list-installed remove update help"
+            opts="-h -V --help --version init list install list-installed remove update help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                
                 *)
                     COMPREPLY=()
                     ;;
@@ -55,15 +53,13 @@ _systemd-boot-friend() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        
         systemd__boot__friend__help)
-            opts=" -h -V  --help --version  "
+            opts="-h --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                
                 *)
                     COMPREPLY=()
                     ;;
@@ -72,13 +68,12 @@ _systemd-boot-friend() {
             return 0
             ;;
         systemd__boot__friend__init)
-            opts=" -h -V  --help --version  "
+            opts="-h --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                
                 *)
                     COMPREPLY=()
                     ;;
@@ -87,13 +82,12 @@ _systemd-boot-friend() {
             return 0
             ;;
         systemd__boot__friend__install)
-            opts=" -f -h -V  --force --help --version  <TARGET> "
+            opts="-f -h --force --help <TARGET>"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                
                 *)
                     COMPREPLY=()
                     ;;
@@ -102,13 +96,12 @@ _systemd-boot-friend() {
             return 0
             ;;
         systemd__boot__friend__list)
-            opts=" -h -V  --help --version  "
+            opts="-h --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                
                 *)
                     COMPREPLY=()
                     ;;
@@ -117,13 +110,12 @@ _systemd-boot-friend() {
             return 0
             ;;
         systemd__boot__friend__list__installed)
-            opts=" -h -V  --help --version  "
+            opts="-h --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                
                 *)
                     COMPREPLY=()
                     ;;
@@ -132,13 +124,12 @@ _systemd-boot-friend() {
             return 0
             ;;
         systemd__boot__friend__remove)
-            opts=" -h -V  --help --version  <TARGET> "
+            opts="-h --help <TARGET>"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                
                 *)
                     COMPREPLY=()
                     ;;
@@ -147,13 +138,12 @@ _systemd-boot-friend() {
             return 0
             ;;
         systemd__boot__friend__update)
-            opts=" -h -V  --help --version  "
+            opts="-h --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                
                 *)
                     COMPREPLY=()
                     ;;

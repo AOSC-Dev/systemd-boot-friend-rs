@@ -1,15 +1,14 @@
-use clap::{AppSettings, Clap, crate_version, crate_authors};
+use clap::{Parser, crate_version, crate_authors};
 
 /// Kernel Version Manager for systemd-boot
-#[derive(Clap, Debug)]
-#[clap(setting = AppSettings::ColoredHelp)]
+#[derive(Parser, Debug)]
 #[clap(version = crate_version!(), author = crate_authors!())]
 pub struct Opts {
     #[clap(subcommand)]
     pub subcommand: Option<SubCommand>
 }
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 pub enum SubCommand {
     Init(Init),
     List(List),
@@ -20,15 +19,15 @@ pub enum SubCommand {
 }
 
 /// Initialize systemd-boot-friend
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 pub struct Init;
 
 /// List all available kernels
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 pub struct List;
 
 /// Install the kernel specified
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 pub struct Install {
     pub target: Option<String>,
     /// force overwrite the entry config or not
@@ -37,15 +36,15 @@ pub struct Install {
 }
 
 /// List all installed kernels
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 pub struct ListInstalled;
 
 /// Remove the kernel specified
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 pub struct Remove {
     pub target: Option<String>,
 }
 
 /// Install all kernels and update boot entries
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 pub struct Update;

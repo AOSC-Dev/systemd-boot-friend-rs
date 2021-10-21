@@ -1,8 +1,7 @@
 use clap::IntoApp;
 use clap_generate::{
-    generate,
+    generate_to,
     generators::{Bash, Fish, Zsh},
-    Generator,
 };
 use std::{env, fs, io::Result};
 
@@ -18,11 +17,12 @@ macro_rules! generate_shell_completions {
     };
 
     ($app:ident, $shell:ident) => {
-        generate::<$shell, _>(
+        generate_to(
+            $shell,
             &mut $app,
             APP,
-            &mut fs::File::create(format!("{}/{}", ROOT, $shell::file_name(APP)))?,
-        );
+            ROOT,
+        )?;
     };
 }
 
