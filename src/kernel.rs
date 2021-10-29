@@ -1,9 +1,9 @@
 use anyhow::{anyhow, bail, Result};
-use core::{default::Default, str::FromStr};
+use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use sailfish::TemplateOnce;
 use semver::Version;
-use std::{cell::RefCell, fmt, fs, path::PathBuf};
+use std::{fmt, fs, path::PathBuf};
 
 use crate::{fl, println_with_prefix, println_with_prefix_and_fl, Config, REL_DEST_PATH};
 
@@ -28,8 +28,8 @@ struct Entry<'a> {
 pub struct Kernel {
     version: Version,
     localversion: String,
-    vmlinuz: RefCell<String>,
-    initrd: RefCell<String>,
+    vmlinuz: String,
+    initrd: String,
 }
 
 impl Ord for Kernel {
@@ -50,36 +50,13 @@ impl fmt::Display for Kernel {
     }
 }
 
-impl FromStr for Kernel {
-    type Err = anyhow::Error;
-
-    fn from_str(text: &str) -> Result<Self> {
-        // Split the kernel filename into 2 parts in order to determine
-        // the version and the localversion of the kernel
-        let mut splitted_kernel_name = text.splitn(2, '-');
-        let version = Version::parse(
-            splitted_kernel_name
-                .next()
-                .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?,
-        )?;
-        let localversion = splitted_kernel_name.next().unwrap_or("unknown").to_owned();
-
-        Ok(Self {
-            version,
-            localversion,
-            vmlinuz: RefCell::new(String::new()),
-            initrd: RefCell::new(String::new()),
-        })
-    }
-}
-
 impl Default for Kernel {
     fn default() -> Self {
         Self {
             version: Version::new(0, 0, 0),
             localversion: "unknown".to_owned(),
-            vmlinuz: RefCell::new("vmlinuz-0.0.0-unknown".to_owned()),
-            initrd: RefCell::new("initramfs-0.0.0-unknown.img".to_owned()),
+            vmlinuz: "vmlinuz-0.0.0-unknown".to_owned(),
+            initrd: "initramfs-0.0.0-unknown.img".to_owned(),
         }
     }
 }
@@ -87,21 +64,31 @@ impl Default for Kernel {
 impl Kernel {
     /// Parse a kernel filename
     pub fn parse(config: &Config, kernel_name: &str) -> Result<Self> {
-        let kernel = Self::from_str(kernel_name)?;
-        kernel.vmlinuz.replace(
-            config
-                .vmlinuz
-                .replace("{VERSION}", &kernel.version.to_string())
-                .replace("{LOCALVERSION}", &kernel.localversion),
-        );
-        kernel.initrd.replace(
-            config
-                .initrd
-                .replace("{VERSION}", &kernel.version.to_string())
-                .replace("{LOCALVERSION}", &kernel.localversion),
-        );
+        // Split the kernel filename into 2 parts in order to determine
+        // the version and the localversion of the kernel
+        let mut splitted_kernel_name = kernel_name.splitn(2, '-');
+        let version = Version::parse(
+            splitted_kernel_name
+                .next()
+                .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?,
+        )?;
+        let localversion = splitted_kernel_name.next().unwrap_or("unknown").to_owned();
 
-        Ok(kernel)
+        let vmlinuz = config
+            .vmlinuz
+            .replace("{VERSION}", &version.to_string())
+            .replace("{LOCALVERSION}", &localversion);
+        let initrd = config
+            .initrd
+            .replace("{VERSION}", &version.to_string())
+            .replace("{LOCALVERSION}", &localversion);
+
+        Ok(Self {
+            version,
+            localversion,
+            vmlinuz,
+            initrd,
+        })
     }
 
     /// Generate a sorted vector of kernel filenames
@@ -109,12 +96,13 @@ impl Kernel {
         // read /usr/lib/modules to get kernel filenames
         let mut kernels = fs::read_dir(MODULES_PATH)?
             .map(|k| {
-                Self::parse(
+                Ok(Self::parse(
                     config,
                     &k?.file_name()
                         .into_string()
                         .unwrap_or_else(|_| String::new()),
                 )
+                .unwrap_or_default())
             })
             .collect::<Result<Vec<Self>>>()?;
         // Sort the vector, thus the kernel filenames are
@@ -144,14 +132,8 @@ impl Kernel {
         );
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
-        fs::copy(
-            src_path.join(self.vmlinuz.borrow().as_str()),
-            dest_path.join(self.vmlinuz.borrow().as_str()),
-        )?;
-        fs::copy(
-            src_path.join(self.initrd.borrow().as_str()),
-            dest_path.join(self.initrd.borrow().as_str()),
-        )?;
+        fs::copy(src_path.join(&self.vmlinuz), dest_path.join(&self.vmlinuz))?;
+        fs::copy(src_path.join(&self.initrd), dest_path.join(&self.initrd))?;
         // copy Intel ucode if exists
         let ucode_path = src_path.join(UCODE);
         if ucode_path.exists() {
@@ -199,7 +181,7 @@ impl Kernel {
             Entry {
                 distro: &config.distro,
                 kernel: &self.to_string(),
-                vmlinuz: self.vmlinuz.borrow().as_str(),
+                vmlinuz: &self.vmlinuz,
                 ucode: if config
                     .esp_mountpoint
                     .join(REL_DEST_PATH)
@@ -210,7 +192,7 @@ impl Kernel {
                 } else {
                     None
                 },
-                initrd: self.initrd.borrow().as_str(),
+                initrd: &self.initrd,
                 options: &config.bootarg,
             }
             .render_once()?,
@@ -223,8 +205,8 @@ impl Kernel {
     pub fn remove(&self, config: &Config) -> Result<()> {
         let kernel_path = config.esp_mountpoint.join(REL_DEST_PATH);
         println_with_prefix_and_fl!("remove_kernel", kernel = self.to_string());
-        fs::remove_file(kernel_path.join(self.vmlinuz.borrow().as_str()))?;
-        fs::remove_file(kernel_path.join(self.initrd.borrow().as_str()))?;
+        fs::remove_file(kernel_path.join(&self.vmlinuz))?;
+        fs::remove_file(kernel_path.join(&self.initrd))?;
         println_with_prefix_and_fl!("remove_entry", kernel = self.to_string());
         fs::remove_file(
             config

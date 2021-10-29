@@ -5,11 +5,11 @@ use clap::{Parser, crate_version, crate_authors};
 #[clap(version = crate_version!(), author = crate_authors!())]
 pub struct Opts {
     #[clap(subcommand)]
-    pub subcommand: Option<SubCommand>
+    pub subcommands: Option<SubCommands>
 }
 
 #[derive(Parser, Debug)]
-pub enum SubCommand {
+pub enum SubCommands {
     Init(Init),
     List(List),
     Install(Install),

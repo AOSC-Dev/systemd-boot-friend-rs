@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use clap::Parser;
-use cli::{Opts, SubCommand};
+use cli::{Opts, SubCommands};
 use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Select};
 use regex::Regex;
@@ -174,16 +174,16 @@ fn main() -> Result<()> {
     let installed_kernels = list_installed_kernels(&config)?;
     let kernels = Kernel::list_kernels(&config)?;
     // Switch table
-    match matches.subcommand {
+    match matches.subcommands {
         Some(s) => match s {
-            SubCommand::Init(_) => init(&config, &installed_kernels, &kernels)?,
-            SubCommand::List(_) => {
+            SubCommands::Init(_) => init(&config, &installed_kernels, &kernels)?,
+            SubCommands::List(_) => {
                 // list available kernels
                 for (i, k) in Kernel::list_kernels(&config)?.iter().enumerate() {
                     println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k);
                 }
             }
-            SubCommand::Install(args) => {
+            SubCommands::Install(args) => {
                 let kernel = match args.target {
                     // the target can be both the number in
                     // the list and the name of the kernel
@@ -197,12 +197,12 @@ fn main() -> Result<()> {
                 };
                 kernel.install_and_make_config(&config, args.force)?;
             }
-            SubCommand::ListInstalled(_) => {
+            SubCommands::ListInstalled(_) => {
                 for (i, k) in installed_kernels.iter().enumerate() {
                     println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k);
                 }
             }
-            SubCommand::Remove(args) => {
+            SubCommands::Remove(args) => {
                 let kernel = match args.target {
                     // the target can be both the number in
                     // the list and the name of the kernel
@@ -213,7 +213,7 @@ fn main() -> Result<()> {
                 };
                 kernel.remove(&config)?;
             }
-            SubCommand::Update(_) => {
+            SubCommands::Update(_) => {
                 update(&config, &installed_kernels, &Kernel::list_kernels(&config)?)?
             }
         },
