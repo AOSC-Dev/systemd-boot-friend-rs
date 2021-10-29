@@ -19,7 +19,7 @@ struct Entry<'a> {
     kernel: &'a str,
     vmlinuz: &'a str,
     ucode: Option<&'a str>,
-    initrd: &'a str,
+    initrd: Option<&'a str>,
     options: &'a str,
 }
 
@@ -94,17 +94,17 @@ impl Kernel {
     /// Generate a sorted vector of kernel filenames
     pub fn list_kernels(config: &Config) -> Result<Vec<Self>> {
         // read /usr/lib/modules to get kernel filenames
-        let mut kernels = fs::read_dir(MODULES_PATH)?
-            .map(|k| {
-                Ok(Self::parse(
-                    config,
-                    &k?.file_name()
-                        .into_string()
-                        .unwrap_or_else(|_| String::new()),
-                )
-                .unwrap_or_default())
-            })
-            .collect::<Result<Vec<Self>>>()?;
+        let mut kernels = Vec::new();
+        for f in fs::read_dir(MODULES_PATH)? {
+            let dirname = f?.file_name().into_string().unwrap();
+            let dirpath = PathBuf::from(MODULES_PATH).join(&dirname);
+            if dirpath.join("modules.dep").exists()
+                && dirpath.join("modules.order").exists()
+                && dirpath.join("modules.builtin").exists()
+            {
+                kernels.push(Self::parse(config, &dirname)?);
+            }
+        }
         // Sort the vector, thus the kernel filenames are
         // arranged with versions from newer to older
         kernels.sort_by(|a, b| b.cmp(a));
@@ -133,7 +133,7 @@ impl Kernel {
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
         fs::copy(src_path.join(&self.vmlinuz), dest_path.join(&self.vmlinuz))?;
-        fs::copy(src_path.join(&self.initrd), dest_path.join(&self.initrd))?;
+        fs::copy(src_path.join(&self.initrd), dest_path.join(&self.initrd)).ok();
         // copy Intel ucode if exists
         let ucode_path = src_path.join(UCODE);
         if ucode_path.exists() {
@@ -176,23 +176,23 @@ impl Kernel {
             path = entry_path.to_string_lossy()
         );
         // Generate entry config
+        let dest_path = config.esp_mountpoint.join(REL_DEST_PATH);
         fs::write(
             entry_path,
             Entry {
                 distro: &config.distro,
                 kernel: &self.to_string(),
                 vmlinuz: &self.vmlinuz,
-                ucode: if config
-                    .esp_mountpoint
-                    .join(REL_DEST_PATH)
-                    .join(UCODE)
-                    .exists()
-                {
+                ucode: if dest_path.join(UCODE).exists() {
                     Some(UCODE)
                 } else {
                     None
                 },
-                initrd: &self.initrd,
+                initrd: if dest_path.join(&self.initrd).exists() {
+                    Some(&self.initrd)
+                } else {
+                    None
+                },
                 options: &config.bootarg,
             }
             .render_once()?,
