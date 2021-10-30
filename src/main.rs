@@ -170,7 +170,6 @@ fn main() -> Result<()> {
         },
         |f| Ok(toml::from_slice(&f)?),
     )?;
-    // the record file of installed kernels, use empty value if not found
     let installed_kernels = list_installed_kernels(&config)?;
     let kernels = Kernel::list_kernels(&config)?;
     // Switch table
@@ -179,7 +178,7 @@ fn main() -> Result<()> {
             SubCommands::Init(_) => init(&config, &installed_kernels, &kernels)?,
             SubCommands::List(_) => {
                 // list available kernels
-                for (i, k) in Kernel::list_kernels(&config)?.iter().enumerate() {
+                for (i, k) in kernels.iter().enumerate() {
                     println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k);
                 }
             }
@@ -190,7 +189,7 @@ fn main() -> Result<()> {
                     Some(n) => parse_num_or_filename(&config, &n, &kernels)?,
                     // install the newest kernel
                     // when no target is given
-                    None => Kernel::list_kernels(&config)?
+                    None => kernels
                         .first()
                         .ok_or_else(|| anyhow!(fl!("no_kernel")))?
                         .clone(),
@@ -213,12 +212,9 @@ fn main() -> Result<()> {
                 };
                 kernel.remove(&config)?;
             }
-            SubCommands::Update(_) => {
-                update(&config, &installed_kernels, &Kernel::list_kernels(&config)?)?
-            }
+            SubCommands::Update(_) => update(&config, &installed_kernels, &kernels)?,
         },
-        None => choose_kernel(&Kernel::list_kernels(&config)?)?
-            .install_and_make_config(&config, false)?,
+        None => choose_kernel(&kernels)?.install_and_make_config(&config, false)?,
     }
 
     Ok(())

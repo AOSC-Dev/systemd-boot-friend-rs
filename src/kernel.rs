@@ -50,17 +50,6 @@ impl fmt::Display for Kernel {
     }
 }
 
-impl Default for Kernel {
-    fn default() -> Self {
-        Self {
-            version: Version::new(0, 0, 0),
-            localversion: "unknown".to_owned(),
-            vmlinuz: "vmlinuz-0.0.0-unknown".to_owned(),
-            initrd: "initramfs-0.0.0-unknown.img".to_owned(),
-        }
-    }
-}
-
 impl Kernel {
     /// Parse a kernel filename
     pub fn parse(config: &Config, kernel_name: &str) -> Result<Self> {
@@ -224,22 +213,4 @@ impl Kernel {
 
         Ok(())
     }
-}
-
-#[test]
-fn test_kernel_struct() {
-    assert_eq!(
-        Kernel::parse(&Config::default(), "0.0.0-unknown").unwrap(),
-        Kernel::default()
-    )
-}
-
-#[test]
-fn test_kernel_display() {
-    assert_eq!(
-        Kernel::parse(&Config::default(), "0.0.0-unknown")
-            .unwrap()
-            .to_string(),
-        "0.0.0-unknown"
-    )
 }
