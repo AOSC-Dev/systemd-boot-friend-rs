@@ -92,6 +92,8 @@ impl Kernel {
                 && dirpath.join("modules.builtin").exists()
             {
                 kernels.push(Self::parse(config, &dirname)?);
+            } else {
+                println_with_prefix_and_fl!("skip_incomplete_kernel", kernel = dirname);
             }
         }
         // Sort the vector, thus the kernel filenames are
