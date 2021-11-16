@@ -59,21 +59,23 @@ fn scan_files(esp_mountpoint: &Path, template: &str) -> Result<HashSet<String>> 
     )?;
     // Regex match group
     let mut results = HashSet::new();
-    for x in fs::read_dir(esp_mountpoint.join(REL_DEST_PATH))? {
-        let filename = &x?
-            .file_name()
-            .into_string()
-            .map_err(|_| anyhow!(fl!("invalid_kernel_filename")))?;
-        if let Some(c) = re.captures(filename) {
-            let version = c
-                .name("version")
-                .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
-                .as_str();
-            let localversion = c
-                .name("localversion")
-                .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
-                .as_str();
-            results.insert(format!("{}-{}", version, localversion));
+    if let Ok(d) = fs::read_dir(esp_mountpoint.join(REL_DEST_PATH)) {
+        for x in d {
+            let filename = &x?
+                .file_name()
+                .into_string()
+                .map_err(|_| anyhow!(fl!("invalid_kernel_filename")))?;
+            if let Some(c) = re.captures(filename) {
+                let version = c
+                    .name("version")
+                    .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
+                    .as_str();
+                let localversion = c
+                    .name("localversion")
+                    .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
+                    .as_str();
+                results.insert(format!("{}-{}", version, localversion));
+            }
         }
     }
 
