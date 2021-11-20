@@ -858,7 +858,6 @@ dependencies = [
  "i18n-embed",
  "i18n-embed-fl",
  "lazy_static",
- "once_cell",
  "regex",
  "rust-embed",
  "sailfish",

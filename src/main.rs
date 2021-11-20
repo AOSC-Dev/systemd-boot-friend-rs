@@ -3,13 +3,12 @@ use clap::Parser;
 use cli::{Opts, SubCommands};
 use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Select};
-use once_cell::sync::OnceCell;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
@@ -23,8 +22,6 @@ mod macros;
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
-
-static CONFIG: OnceCell<Config> = OnceCell::new();
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -53,7 +50,7 @@ impl Default for Config {
 }
 
 /// Scan kernel files installed in systemd-boot
-fn scan_files(template: &str) -> Result<HashSet<String>> {
+fn scan_files(esp_mountpoint: &Path, template: &str) -> Result<HashSet<String>> {
     // Construct regex for the template
     let re = Regex::new(
         &template
@@ -62,7 +59,7 @@ fn scan_files(template: &str) -> Result<HashSet<String>> {
     )?;
     // Regex match group
     let mut results = HashSet::new();
-    if let Ok(d) = fs::read_dir(CONFIG.get().unwrap().esp_mountpoint.join(REL_DEST_PATH)) {
+    if let Ok(d) = fs::read_dir(esp_mountpoint.join(REL_DEST_PATH)) {
         for x in d {
             let filename = &x?
                 .file_name()
@@ -86,15 +83,15 @@ fn scan_files(template: &str) -> Result<HashSet<String>> {
 }
 
 /// Generate installed kernel list
-fn list_installed_kernels() -> Result<Vec<Kernel>> {
-    let vmlinuz_list = scan_files(&CONFIG.get().unwrap().vmlinuz)?;
-    let initrd_list = scan_files(&CONFIG.get().unwrap().initrd)?;
+fn list_installed_kernels(config: &Config) -> Result<Vec<Kernel>> {
+    let vmlinuz_list = scan_files(&config.esp_mountpoint, &config.vmlinuz)?;
+    let initrd_list = scan_files(&config.esp_mountpoint, &config.initrd)?;
     // Compare two lists, make sure
     // each kernel was completely installed
     let mut installed_kernels = Vec::new();
     for i in vmlinuz_list.iter() {
         if initrd_list.contains(i) {
-            installed_kernels.push(Kernel::parse(i)?);
+            installed_kernels.push(Kernel::parse(config, i)?);
         }
     }
     // Sort the vector
@@ -130,8 +127,7 @@ fn update(installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
 }
 
 /// Initialize the default environment for friend
-fn init(installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
-    let config = CONFIG.get().unwrap();
+fn init(config: &Config, installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
     // use bootctl to install systemd-boot
     println_with_prefix_and_fl!("initialize");
     Command::new("bootctl")
@@ -153,13 +149,13 @@ fn init(installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
 }
 
 #[inline]
-fn parse_num_or_filename(n: &str, kernels: &[Kernel]) -> Result<Kernel> {
+fn parse_num_or_filename(config: &Config, n: &str, kernels: &[Kernel]) -> Result<Kernel> {
     Ok(match n.parse::<usize>() {
         Ok(num) => kernels
             .get(num - 1)
             .ok_or_else(|| anyhow!(fl!("invalid_index")))?
             .clone(),
-        Err(_) => Kernel::parse(n)?,
+        Err(_) => Kernel::parse(config, n)?,
     })
 }
 
@@ -167,7 +163,7 @@ fn main() -> Result<()> {
     // CLI
     let matches: Opts = Opts::parse();
     // Read config, create a default one if the file is missing
-    CONFIG.set(fs::read(CONF_PATH).map_or_else(
+    let config = fs::read(CONF_PATH).map_or_else(
         |_| {
             println_with_prefix_and_fl!("conf_default", conf_path = CONF_PATH);
             fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
@@ -175,13 +171,13 @@ fn main() -> Result<()> {
             Err(anyhow!(fl!("edit_conf", conf_path = CONF_PATH)))
         },
         |f| Ok(toml::from_slice(&f)?),
-    )?).unwrap();
-    let installed_kernels = list_installed_kernels()?;
-    let kernels = Kernel::list_kernels()?;
+    )?;
+    let installed_kernels = list_installed_kernels(&config)?;
+    let kernels = Kernel::list_kernels(&config)?;
     // Switch table
     match matches.subcommands {
         Some(s) => match s {
-            SubCommands::Init(_) => init(&installed_kernels, &kernels)?,
+            SubCommands::Init(_) => init(&config, &installed_kernels, &kernels)?,
             SubCommands::List(_) => {
                 // list available kernels
                 for (i, k) in kernels.iter().enumerate() {
@@ -192,7 +188,7 @@ fn main() -> Result<()> {
                 let kernel = match args.target {
                     // the target can be both the number in
                     // the list and the name of the kernel
-                    Some(n) => parse_num_or_filename(&n, &kernels)?,
+                    Some(n) => parse_num_or_filename(&config, &n, &kernels)?,
                     // install the newest kernel
                     // when no target is given
                     None => kernels
@@ -211,7 +207,7 @@ fn main() -> Result<()> {
                 let kernel = match args.target {
                     // the target can be both the number in
                     // the list and the name of the kernel
-                    Some(n) => parse_num_or_filename(&n, &installed_kernels)?,
+                    Some(n) => parse_num_or_filename(&config, &n, &installed_kernels)?,
                     // select the kernel to remove
                     // when no target is given
                     None => choose_kernel(&installed_kernels)?,
