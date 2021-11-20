@@ -1,11 +1,11 @@
-use clap::{Parser, crate_version, crate_authors};
+use clap::{crate_authors, crate_version, Parser};
 
 /// Kernel Version Manager for systemd-boot
 #[derive(Parser, Debug)]
 #[clap(version = crate_version!(), author = crate_authors!())]
 pub struct Opts {
     #[clap(subcommand)]
-    pub subcommands: Option<SubCommands>
+    pub subcommands: Option<SubCommands>,
 }
 
 #[derive(Parser, Debug)]
