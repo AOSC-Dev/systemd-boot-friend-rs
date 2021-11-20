@@ -116,10 +116,10 @@ impl Kernel {
         let src_path = PathBuf::from(SRC_PATH);
         if !dest_path.exists() {
             println_with_prefix_and_fl!("info_path_not_exist");
-            bail!(
-                "{}",
-                fl!("err_path_not_exist", path = dest_path.to_string_lossy())
-            );
+            bail!(fl!(
+                "err_path_not_exist",
+                path = dest_path.to_string_lossy()
+            ));
         }
         // generate the path to the source files
         println_with_prefix_and_fl!(
@@ -147,10 +147,10 @@ impl Kernel {
         let entries_path = self.esp_mountpoint.join(REL_ENTRY_PATH);
         if !entries_path.exists() {
             println_with_prefix_and_fl!("info_path_not_exist");
-            bail!(
-                "{}",
-                fl!("err_path_not_exist", path = entries_path.to_string_lossy())
-            );
+            bail!(fl!(
+                "err_path_not_exist",
+                path = entries_path.to_string_lossy()
+            ));
         }
         let entry_path = entries_path.join(self.to_string() + ".conf");
         // do not override existed entry file until forced to do so

@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use clap::Parser;
 use cli::{Opts, SubCommands};
 use core::default::Default;
@@ -103,7 +103,7 @@ fn list_installed_kernels(config: &Config) -> Result<Vec<Kernel>> {
 /// Choose a kernel using dialoguer
 fn choose_kernel(kernels: &[Kernel]) -> Result<Kernel> {
     if kernels.is_empty() {
-        return Err(anyhow!(fl!("empty_list")));
+        bail!(fl!("empty_list"));
     }
     // build dialoguer Select for kernel selection
     let n = Select::with_theme(&ColorfulTheme::default())
@@ -168,7 +168,7 @@ fn main() -> Result<()> {
             println_with_prefix_and_fl!("conf_default", conf_path = CONF_PATH);
             fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
             fs::write(CONF_PATH, toml::to_string_pretty(&Config::default())?)?;
-            Err(anyhow!(fl!("edit_conf", conf_path = CONF_PATH)))
+            bail!(fl!("edit_conf", conf_path = CONF_PATH))
         },
         |f| Ok(toml::from_slice(&f)?),
     )?;
