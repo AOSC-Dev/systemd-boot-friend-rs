@@ -6,9 +6,8 @@ use dialoguer::{theme::ColorfulTheme, Select};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashSet,
     fs,
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::{Command, Stdio},
 };
 
@@ -40,8 +39,8 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            vmlinuz: "vmlinuz-{VERSION}-{LOCALVERSION}".to_owned(),
-            initrd: "initramfs-{VERSION}-{LOCALVERSION}.img".to_owned(),
+            vmlinuz: "vmlinuz-{VERSION}".to_owned(),
+            initrd: "initramfs-{VERSION}.img".to_owned(),
             distro: "AOSC OS".to_owned(),
             esp_mountpoint: PathBuf::from("/efi"),
             bootarg: String::new(),
@@ -49,17 +48,13 @@ impl Default for Config {
     }
 }
 
-/// Scan kernel files installed in systemd-boot
-fn scan_files(esp_mountpoint: &Path, template: &str) -> Result<HashSet<String>> {
+/// Generate installed kernel list
+fn list_installed_kernels(config: &Config) -> Result<Vec<Kernel>> {
     // Construct regex for the template
-    let re = Regex::new(
-        &template
-            .replace("{VERSION}", r"(?P<version>[0-9.]+)")
-            .replace("{LOCALVERSION}", "(?P<localversion>[a-z0-9.-]+)"),
-    )?;
+    let re = Regex::new(&config.initrd.replace("{VERSION}", r"(?P<version>.+)"))?;
     // Regex match group
-    let mut results = HashSet::new();
-    if let Ok(d) = fs::read_dir(esp_mountpoint.join(REL_DEST_PATH)) {
+    let mut installed_kernels = Vec::new();
+    if let Ok(d) = fs::read_dir(config.esp_mountpoint.join(REL_DEST_PATH)) {
         for x in d {
             let filename = &x?
                 .file_name()
@@ -70,32 +65,10 @@ fn scan_files(esp_mountpoint: &Path, template: &str) -> Result<HashSet<String>> 
                     .name("version")
                     .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
                     .as_str();
-                let localversion = c
-                    .name("localversion")
-                    .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
-                    .as_str();
-                results.insert(format!("{}-{}", version, localversion));
+                installed_kernels.push(Kernel::parse(config, version)?);
             }
         }
     }
-
-    Ok(results)
-}
-
-/// Generate installed kernel list
-fn list_installed_kernels(config: &Config) -> Result<Vec<Kernel>> {
-    let vmlinuz_list = scan_files(&config.esp_mountpoint, &config.vmlinuz)?;
-    let initrd_list = scan_files(&config.esp_mountpoint, &config.initrd)?;
-    // Compare two lists, make sure
-    // each kernel was completely installed
-    let mut installed_kernels = Vec::new();
-    for i in vmlinuz_list.iter() {
-        if initrd_list.contains(i) {
-            installed_kernels.push(Kernel::parse(config, i)?);
-        }
-    }
-    // Sort the vector
-    installed_kernels.sort_unstable();
 
     Ok(installed_kernels)
 }

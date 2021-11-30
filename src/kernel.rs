@@ -1,9 +1,8 @@
-use anyhow::{anyhow, bail, Result};
-use core::default::Default;
+use anyhow::{bail, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm};
+use regex::Regex;
 use sailfish::TemplateOnce;
-use semver::Version;
-use std::{fmt, fs, path::PathBuf};
+use std::{default::Default, fmt, fs, path::PathBuf};
 
 use crate::{fl, println_with_prefix, println_with_prefix_and_fl, Config, REL_DEST_PATH};
 
@@ -11,6 +10,48 @@ const SRC_PATH: &str = "/boot/";
 const UCODE: &str = "intel-ucode.img";
 const MODULES_PATH: &str = "/usr/lib/modules/";
 const REL_ENTRY_PATH: &str = "loader/entries/";
+const REGEX: &str = r"(?P<major>[0-9]+)\.(?P<minor>[0-9]+)\.(?P<patch>[0-9]+)-((?P<rc>rc[0-9]+)?-|)((?P<rel>[0-9]+)?-|)(?P<localversion>.+)";
+
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub struct Version {
+    major: u64,
+    minor: u64,
+    patch: u64,
+    rc: Option<String>,
+    rel: Option<u64>,
+}
+
+impl fmt::Display for Version {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}.{}.{}{}{}",
+            self.major,
+            self.minor,
+            self.patch,
+            match &self.rc {
+                Some(s) => format!("-{}", s),
+                None => "".to_owned(),
+            },
+            match &self.rel {
+                Some(s) => format!("-{}", s),
+                None => "".to_owned(),
+            }
+        )
+    }
+}
+
+impl Default for Version {
+    fn default() -> Self {
+        Version {
+            major: 0,
+            minor: 0,
+            patch: 0,
+            rc: None,
+            rel: None,
+        }
+    }
+}
 
 #[derive(TemplateOnce)]
 #[template(path = "entry.stpl")]
@@ -53,27 +94,43 @@ impl fmt::Display for Kernel {
     }
 }
 
+pub fn parse_kernel_name(kernel_name: &str) -> Result<(Version, String)> {
+    let regex = Regex::new(REGEX)?;
+    let version;
+    let localversion;
+    if let Some(cap) = regex.captures(kernel_name) {
+        version = Version {
+            major: cap
+                .name("major")
+                .map_or_else(|| 0, |m| m.as_str().parse::<u64>().unwrap()),
+            minor: cap
+                .name("minor")
+                .map_or_else(|| 0, |m| m.as_str().parse::<u64>().unwrap()),
+            patch: cap
+                .name("patch")
+                .map_or_else(|| 0, |m| m.as_str().parse::<u64>().unwrap()),
+            rc: cap.name("rc").map(|m| m.as_str().to_owned()),
+            rel: cap.name("rel").map(|m| m.as_str().parse::<u64>().unwrap()),
+        };
+        localversion = cap
+            .name("localversion")
+            .map_or_else(|| "", |m| m.as_str())
+            .to_owned();
+    } else {
+        version = Version::default();
+        localversion = "".to_owned();
+    }
+    Ok((version, localversion))
+}
+
 impl Kernel {
     /// Parse a kernel filename
     pub fn parse(config: &Config, kernel_name: &str) -> Result<Self> {
-        // Split the kernel filename into 2 parts in order to determine
-        // the version and the localversion of the kernel
-        let mut splitted_kernel_name = kernel_name.splitn(2, '-');
-        let version = Version::parse(
-            splitted_kernel_name
-                .next()
-                .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?,
-        )?;
-        let localversion = splitted_kernel_name.next().unwrap_or("unknown").to_owned();
-
-        let vmlinuz = config
-            .vmlinuz
-            .replace("{VERSION}", &version.to_string())
-            .replace("{LOCALVERSION}", &localversion);
-        let initrd = config
-            .initrd
-            .replace("{VERSION}", &version.to_string())
-            .replace("{LOCALVERSION}", &localversion);
+        let vmlinuz;
+        let initrd;
+        let (version, localversion) = parse_kernel_name(kernel_name)?;
+        vmlinuz = config.vmlinuz.replace("{VERSION}", kernel_name);
+        initrd = config.initrd.replace("{VERSION}", kernel_name);
 
         Ok(Self {
             version,
@@ -203,7 +260,7 @@ impl Kernel {
         let kernel_path = self.esp_mountpoint.join(REL_DEST_PATH);
         println_with_prefix_and_fl!("remove_kernel", kernel = self.to_string());
         fs::remove_file(kernel_path.join(&self.vmlinuz))?;
-        fs::remove_file(kernel_path.join(&self.initrd))?;
+        fs::remove_file(kernel_path.join(&self.initrd)).ok();
         println_with_prefix_and_fl!("remove_entry", kernel = self.to_string());
         fs::remove_file(
             self.esp_mountpoint
