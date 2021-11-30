@@ -30,7 +30,8 @@ For further information, visit https://wiki.aosc.io/software/systemd-boot-friend
 
 ```bash
 cargo build --release
-install -Dm755 target/release/systemd-boot-friend-rs /usr/local/bin/systemd-boot-friend
+install -Dm755 target/release/systemd-boot-friend /usr/local/bin/systemd-boot-friend
+PREFIX=/usr/local ./install-assets.sh
 ```
 
 ## Dependencies
