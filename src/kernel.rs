@@ -1,5 +1,6 @@
 use anyhow::{bail, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm};
+use lazy_static::lazy_static;
 use regex::Regex;
 use sailfish::TemplateOnce;
 use std::{default::Default, fmt, fs, path::PathBuf};
@@ -10,7 +11,12 @@ const SRC_PATH: &str = "/boot/";
 const UCODE: &str = "intel-ucode.img";
 const MODULES_PATH: &str = "/usr/lib/modules/";
 const REL_ENTRY_PATH: &str = "loader/entries/";
-const REGEX: &str = r"(?P<major>[0-9]+)\.(?P<minor>[0-9]+)\.(?P<patch>[0-9]+)-((?P<rc>rc[0-9]+)?-|)((?P<rel>[0-9]+)?-|)(?P<localversion>.+)";
+lazy_static! {
+    static ref KERNEL_REGEX: Regex =
+        Regex::new(
+            r"(?P<major>[0-9]+)\.(?P<minor>[0-9]+)\.(?P<patch>[0-9]+)-((?P<rc>rc[0-9]+)?-|)((?P<rel>[0-9]+)?-|)(?P<localversion>.+)"
+        ).unwrap();
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Version {
@@ -95,32 +101,20 @@ impl fmt::Display for Kernel {
 }
 
 pub fn parse_kernel_name(kernel_name: &str) -> Result<(Version, String)> {
-    let regex = Regex::new(REGEX)?;
-    let version;
-    let localversion;
-    if let Some(cap) = regex.captures(kernel_name) {
-        version = Version {
-            major: cap
-                .name("major")
-                .map_or_else(|| 0, |m| m.as_str().parse::<u64>().unwrap()),
-            minor: cap
-                .name("minor")
-                .map_or_else(|| 0, |m| m.as_str().parse::<u64>().unwrap()),
-            patch: cap
-                .name("patch")
-                .map_or_else(|| 0, |m| m.as_str().parse::<u64>().unwrap()),
+    if let Some(cap) = KERNEL_REGEX.captures(kernel_name) {
+        let version = Version {
+            // These are safe because I'm good
+            major: cap.name("major").unwrap().as_str().parse()?,
+            minor: cap.name("minor").unwrap().as_str().parse()?,
+            patch: cap.name("patch").unwrap().as_str().parse()?,
             rc: cap.name("rc").map(|m| m.as_str().to_owned()),
-            rel: cap.name("rel").map(|m| m.as_str().parse::<u64>().unwrap()),
+            rel: cap.name("rel").map(|m| m.as_str().parse().unwrap()),
         };
-        localversion = cap
-            .name("localversion")
-            .map_or_else(|| "", |m| m.as_str())
-            .to_owned();
+        let localversion = cap.name("localversion").unwrap().as_str().to_owned();
+        Ok((version, localversion))
     } else {
-        version = Version::default();
-        localversion = "".to_owned();
+        bail!(fl!("invalid_kernel_filename"))
     }
-    Ok((version, localversion))
 }
 
 impl Kernel {
@@ -154,7 +148,11 @@ impl Kernel {
                 && dirpath.join("modules.order").exists()
                 && dirpath.join("modules.builtin").exists()
             {
-                kernels.push(Self::parse(config, &dirname)?);
+                if let Ok(k) = Self::parse(config, &dirname) {
+                    kernels.push(k);
+                } else {
+                    println_with_prefix_and_fl!("skip_unidentified_kernel", kernel = dirname);
+                }
             } else {
                 println_with_prefix_and_fl!("skip_incomplete_kernel", kernel = dirname);
             }
