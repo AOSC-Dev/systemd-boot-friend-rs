@@ -28,7 +28,7 @@ regex = "1.5"
 # i18n
 i18n-embed = { version = "0.13", features = ["fluent-system", "desktop-requester"]}
 i18n-embed-fl = "0.6"
-rust-embed = "6.2"
+rust-embed = "6.3"
 unic-langid = "0.9"
 
 [build-dependencies]
