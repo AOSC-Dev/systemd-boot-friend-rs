@@ -3,7 +3,7 @@ use dialoguer::{theme::ColorfulTheme, Confirm};
 use lazy_static::lazy_static;
 use regex::Regex;
 use sailfish::TemplateOnce;
-use std::{default::Default, fmt, fs, path::PathBuf};
+use std::{fmt, fs, path::PathBuf};
 
 use crate::{fl, println_with_prefix, println_with_prefix_and_fl, Config, REL_DEST_PATH};
 
@@ -12,10 +12,10 @@ const UCODE: &str = "intel-ucode.img";
 const MODULES_PATH: &str = "/usr/lib/modules/";
 const REL_ENTRY_PATH: &str = "loader/entries/";
 lazy_static! {
-    static ref KERNEL_REGEX: Regex =
-        Regex::new(
+    static ref KERNEL_REGEX: Regex = Regex::new(
             r"(?P<major>[0-9]+)\.(?P<minor>[0-9]+)\.(?P<patch>[0-9]+)-((?P<rc>rc[0-9]+)?-|)((?P<rel>[0-9]+)?-|)(?P<localversion>.+)"
-        ).unwrap();
+        )
+        .unwrap();
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
@@ -35,27 +35,9 @@ impl fmt::Display for Version {
             self.major,
             self.minor,
             self.patch,
-            match &self.rc {
-                Some(s) => format!("-{}", s),
-                None => "".to_owned(),
-            },
-            match &self.rel {
-                Some(s) => format!("-{}", s),
-                None => "".to_owned(),
-            }
+            self.rc.as_ref().map_or_else(|| "".to_owned(), |s| format!("-{}", s)),
+            self.rel.as_ref().map_or_else(|| "".to_owned(), |s| format!("-{}", s)),
         )
-    }
-}
-
-impl Default for Version {
-    fn default() -> Self {
-        Version {
-            major: 0,
-            minor: 0,
-            patch: 0,
-            rc: None,
-            rel: None,
-        }
     }
 }
 
