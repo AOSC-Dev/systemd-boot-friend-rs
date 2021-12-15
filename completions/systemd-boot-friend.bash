@@ -9,7 +9,7 @@ _systemd-boot-friend() {
     for i in ${COMP_WORDS[@]}
     do
         case "${i}" in
-            systemd-boot-friend)
+            "$1")
                 cmd="systemd__boot__friend"
                 ;;
             help)

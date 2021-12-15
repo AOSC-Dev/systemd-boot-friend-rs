@@ -173,6 +173,8 @@ impl Kernel {
         if ucode_path.exists() {
             println_with_prefix_and_fl!("install_ucode");
             fs::copy(ucode_path, dest_path.join(UCODE))?;
+        } else {
+            fs::remove_file(dest_path.join(UCODE)).ok();
         }
 
         Ok(())
