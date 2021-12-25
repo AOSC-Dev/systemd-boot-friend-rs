@@ -54,7 +54,7 @@ _systemd-boot-friend() {
             return 0
             ;;
         systemd__boot__friend__help)
-            opts="-h --help"
+            opts=""
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0

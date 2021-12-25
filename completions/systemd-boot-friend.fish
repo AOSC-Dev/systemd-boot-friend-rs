@@ -14,4 +14,3 @@ complete -c systemd-boot-friend -n "__fish_seen_subcommand_from install" -s h -l
 complete -c systemd-boot-friend -n "__fish_seen_subcommand_from list-installed" -s h -l help -d 'Print help information'
 complete -c systemd-boot-friend -n "__fish_seen_subcommand_from remove" -s h -l help -d 'Print help information'
 complete -c systemd-boot-friend -n "__fish_seen_subcommand_from update" -s h -l help -d 'Print help information'
-complete -c systemd-boot-friend -n "__fish_seen_subcommand_from help" -s h -l help -d 'Print help information'
