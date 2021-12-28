@@ -35,8 +35,12 @@ impl fmt::Display for Version {
             self.major,
             self.minor,
             self.patch,
-            self.rc.as_ref().map_or_else(|| "".to_owned(), |s| format!("-{}", s)),
-            self.rel.as_ref().map_or_else(|| "".to_owned(), |s| format!("-{}", s)),
+            self.rc
+                .as_ref()
+                .map_or_else(|| "".to_owned(), |s| format!("-{}", s)),
+            self.rel
+                .as_ref()
+                .map_or_else(|| "".to_owned(), |s| format!("-{}", s)),
         )
     }
 }
@@ -219,16 +223,12 @@ impl Kernel {
                 distro: &self.distro,
                 kernel: &self.to_string(),
                 vmlinuz: &self.vmlinuz,
-                ucode: if dest_path.join(UCODE).exists() {
-                    Some(UCODE)
-                } else {
-                    None
-                },
-                initrd: if dest_path.join(&self.initrd).exists() {
-                    Some(&self.initrd)
-                } else {
-                    None
-                },
+                ucode: Some(dest_path.join(UCODE))
+                    .filter(|x| x.exists())
+                    .map(|_| UCODE),
+                initrd: Some(dest_path.join(&self.initrd))
+                    .filter(|x| x.exists())
+                    .map(|_| self.initrd.as_str()),
                 options: &self.bootarg,
             }
             .render_once()?,
