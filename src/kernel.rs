@@ -2,7 +2,6 @@ use anyhow::{bail, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use lazy_static::lazy_static;
 use regex::Regex;
-use sailfish::TemplateOnce;
 use std::{fmt, fs, path::PathBuf};
 
 use crate::{fl, println_with_prefix, println_with_prefix_and_fl, Config, REL_DEST_PATH};
@@ -43,17 +42,6 @@ impl fmt::Display for Version {
                 .map_or_else(|| "".to_owned(), |s| format!("-{}", s)),
         )
     }
-}
-
-#[derive(TemplateOnce)]
-#[template(path = "entry.stpl")]
-struct Entry<'a> {
-    distro: &'a str,
-    kernel: &'a str,
-    vmlinuz: &'a str,
-    ucode: Option<&'a str>,
-    initrd: Option<&'a str>,
-    options: &'a str,
 }
 
 /// A kernel struct for parsing kernel filenames
@@ -217,22 +205,21 @@ impl Kernel {
         );
         // Generate entry config
         let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
-        fs::write(
-            entry_path,
-            Entry {
-                distro: &self.distro,
-                kernel: &self.to_string(),
-                vmlinuz: &self.vmlinuz,
-                ucode: Some(dest_path.join(UCODE))
-                    .filter(|x| x.exists())
-                    .map(|_| UCODE),
-                initrd: Some(dest_path.join(&self.initrd))
-                    .filter(|x| x.exists())
-                    .map(|_| self.initrd.as_str()),
-                options: &self.bootarg,
-            }
-            .render_once()?,
-        )?;
+        let rel_dest_path = PathBuf::from(REL_DEST_PATH);
+        let entry = format!(
+            "title {} ({})\nlinux /{}\n{}{}options {}",
+            &self.distro,
+            &self.to_string(),
+            rel_dest_path.join(&self.vmlinuz).display(),
+            if dest_path.join(UCODE).exists() {
+                format!("initrd /{}{}\n", REL_DEST_PATH, UCODE)
+            } else { String::new() },
+            if dest_path.join(&self.initrd).exists() {
+                format!("initrd /{}{}\n", REL_DEST_PATH, &self.initrd)
+            } else { String::new() },
+            &self.bootarg
+        );
+        fs::write(entry_path, entry)?;
 
         Ok(())
     }
