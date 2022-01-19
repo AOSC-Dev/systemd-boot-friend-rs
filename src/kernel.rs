@@ -2,7 +2,10 @@ use anyhow::{bail, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use std::{fmt, fs, path::PathBuf};
 
-use crate::{fl, println_with_prefix, println_with_prefix_and_fl, Config, REL_DEST_PATH, parser::parse_version};
+use crate::{
+    fl, parser::parse_version, println_with_prefix, println_with_prefix_and_fl, Config,
+    REL_DEST_PATH,
+};
 
 const SRC_PATH: &str = "/boot/";
 const UCODE: &str = "intel-ucode.img";
@@ -184,10 +187,14 @@ impl Kernel {
             rel_dest_path.join(&self.vmlinuz).display(),
             if dest_path.join(UCODE).exists() {
                 format!("initrd /{}{}\n", REL_DEST_PATH, UCODE)
-            } else { String::new() },
+            } else {
+                String::new()
+            },
             if dest_path.join(&self.initrd).exists() {
                 format!("initrd /{}{}\n", REL_DEST_PATH, &self.initrd)
-            } else { String::new() },
+            } else {
+                String::new()
+            },
             &self.bootarg
         );
         fs::write(entry_path, entry)?;
