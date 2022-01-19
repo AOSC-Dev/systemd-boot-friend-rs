@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm};
-use std::{fmt, fs, path::PathBuf};
+use std::{cmp::Ordering, fmt, fs, path::PathBuf};
 
 use crate::{
     fl, parser::parse_version, println_with_prefix, println_with_prefix_and_fl, Config,
@@ -48,13 +48,13 @@ pub struct Kernel {
 }
 
 impl Ord for Kernel {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.version.cmp(&other.version)
     }
 }
 
 impl PartialOrd for Kernel {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
