@@ -1,43 +1,31 @@
 use anyhow::{bail, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm};
-use lazy_static::lazy_static;
-use regex::Regex;
 use std::{fmt, fs, path::PathBuf};
 
-use crate::{fl, println_with_prefix, println_with_prefix_and_fl, Config, REL_DEST_PATH};
+use crate::{fl, println_with_prefix, println_with_prefix_and_fl, Config, REL_DEST_PATH, parser::parse_version};
 
 const SRC_PATH: &str = "/boot/";
 const UCODE: &str = "intel-ucode.img";
 const MODULES_PATH: &str = "/usr/lib/modules/";
 const REL_ENTRY_PATH: &str = "loader/entries/";
-lazy_static! {
-    static ref KERNEL_REGEX: Regex = Regex::new(
-            r"(?P<major>[0-9]+)\.(?P<minor>[0-9]+)\.(?P<patch>[0-9]+)-((?P<rc>rc[0-9]+)?-|)((?P<rel>[0-9]+)?-|)(?P<localversion>.+)"
-        )
-        .unwrap();
-}
 
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Version {
-    major: u64,
-    minor: u64,
-    patch: u64,
-    rc: Option<String>,
-    rel: Option<u64>,
+    pub major: u64,
+    pub minor: u64,
+    pub patch: u64,
+    pub rc: Option<String>,
 }
 
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}.{}.{}{}{}",
+            "{}.{}.{}{}",
             self.major,
             self.minor,
             self.patch,
             self.rc
-                .as_ref()
-                .map_or_else(|| "".to_owned(), |s| format!("-{}", s)),
-            self.rel
                 .as_ref()
                 .map_or_else(|| "".to_owned(), |s| format!("-{}", s)),
         )
@@ -70,24 +58,7 @@ impl PartialOrd for Kernel {
 
 impl fmt::Display for Kernel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}-{}", self.version, self.localversion)
-    }
-}
-
-pub fn parse_kernel_name(kernel_name: &str) -> Result<(Version, String)> {
-    if let Some(cap) = KERNEL_REGEX.captures(kernel_name) {
-        let version = Version {
-            // These are safe because I'm good
-            major: cap.name("major").unwrap().as_str().parse()?,
-            minor: cap.name("minor").unwrap().as_str().parse()?,
-            patch: cap.name("patch").unwrap().as_str().parse()?,
-            rc: cap.name("rc").map(|m| m.as_str().to_owned()),
-            rel: cap.name("rel").map(|m| m.as_str().parse().unwrap()),
-        };
-        let localversion = cap.name("localversion").unwrap().as_str().to_owned();
-        Ok((version, localversion))
-    } else {
-        bail!(fl!("invalid_kernel_filename"))
+        write!(f, "{}{}", self.version, self.localversion)
     }
 }
 
@@ -96,7 +67,7 @@ impl Kernel {
     pub fn parse(config: &Config, kernel_name: &str) -> Result<Self> {
         let vmlinuz;
         let initrd;
-        let (version, localversion) = parse_kernel_name(kernel_name)?;
+        let (version, localversion) = parse_version(kernel_name)?;
         vmlinuz = config.vmlinuz.replace("{VERSION}", kernel_name);
         initrd = config.initrd.replace("{VERSION}", kernel_name);
 

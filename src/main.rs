@@ -18,6 +18,7 @@ mod cli;
 mod i18n;
 mod kernel;
 mod macros;
+mod parser;
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
