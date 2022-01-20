@@ -52,7 +52,7 @@ impl Default for Config {
 /// Generate installed kernel list
 fn list_installed_kernels(config: &Config) -> Result<Vec<Kernel>> {
     // Construct regex for the template
-    let re = Regex::new(&config.initrd.replace("{VERSION}", r"(?P<version>.+)"))?;
+    let re = Regex::new(&config.vmlinuz.replace("{VERSION}", r"(?P<version>.+)"))?;
     // Regex match group
     let mut installed_kernels = Vec::new();
     if let Ok(d) = fs::read_dir(config.esp_mountpoint.join(REL_DEST_PATH)) {
