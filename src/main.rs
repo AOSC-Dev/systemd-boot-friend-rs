@@ -133,19 +133,37 @@ fn parse_num_or_filename(config: &Config, n: &str, kernels: &[Kernel]) -> Result
     })
 }
 
-fn main() -> Result<()> {
-    // CLI
-    let matches: Opts = Opts::parse();
-    // Read config, create a default one if the file is missing
-    let config = fs::read(CONF_PATH).map_or_else(
+fn read_config() -> Result<Config> {
+    fs::read(CONF_PATH).map_or_else(
         |_| {
             println_with_prefix_and_fl!("conf_default", conf_path = CONF_PATH);
             fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
             fs::write(CONF_PATH, toml::to_string_pretty(&Config::default())?)?;
             bail!(fl!("edit_conf", conf_path = CONF_PATH))
         },
-        |f| Ok(toml::from_slice(&f)?),
-    )?;
+        |f| {
+            let mut config: Config = toml::from_slice(&f)?;
+            // Migrate from old configuration
+            let old_conf = "{VERSION}-{LOCALVERSION}";
+            let new_conf = "{VERSION}";
+            if config.vmlinuz.contains(old_conf)
+                || config.initrd.contains(old_conf)
+            {
+                println_with_prefix_and_fl!("conf_old");
+                config.vmlinuz = config.vmlinuz.replace(old_conf, new_conf);
+                config.initrd = config.initrd.replace(old_conf, new_conf);
+                fs::write(CONF_PATH, toml::to_string_pretty(&config)?)?;
+            }
+            Ok(config)
+        },
+    )
+}
+
+fn main() -> Result<()> {
+    // CLI
+    let matches: Opts = Opts::parse();
+    // Read config, create a default one if the file is missing
+    let config = read_config()?;
     let installed_kernels = list_installed_kernels(&config)?;
     let kernels = Kernel::list_kernels(&config)?;
     // Switch table
