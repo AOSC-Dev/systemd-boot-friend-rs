@@ -1,6 +1,0 @@
-major = { ASCII_DIGIT+ }
-minor = { ASCII_DIGIT+ }
-patch = { ASCII_DIGIT+ }
-rc = { "rc" ~ ASCII_DIGIT+ }
-localver = { ANY+ }
-version = { major ~ "." ~ minor ~ ("." ~ patch)? ~ ("-" ~ rc)? ~ localver }

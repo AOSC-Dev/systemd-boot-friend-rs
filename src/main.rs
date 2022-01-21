@@ -3,7 +3,6 @@ use clap::Parser;
 use cli::{Opts, SubCommands};
 use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Select};
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -42,36 +41,11 @@ impl Default for Config {
         Config {
             vmlinuz: "vmlinuz-{VERSION}".to_owned(),
             initrd: "initramfs-{VERSION}.img".to_owned(),
-            distro: "AOSC OS".to_owned(),
+            distro: "Linux".to_owned(),
             esp_mountpoint: PathBuf::from("/efi"),
             bootarg: String::new(),
         }
     }
-}
-
-/// Generate installed kernel list
-fn list_installed_kernels(config: &Config) -> Result<Vec<Kernel>> {
-    // Construct regex for the template
-    let re = Regex::new(&config.vmlinuz.replace("{VERSION}", r"(?P<version>.+)"))?;
-    // Regex match group
-    let mut installed_kernels = Vec::new();
-    if let Ok(d) = fs::read_dir(config.esp_mountpoint.join(REL_DEST_PATH)) {
-        for x in d {
-            let filename = &x?
-                .file_name()
-                .into_string()
-                .map_err(|_| anyhow!(fl!("invalid_kernel_filename")))?;
-            if let Some(c) = re.captures(filename) {
-                let version = c
-                    .name("version")
-                    .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
-                    .as_str();
-                installed_kernels.push(Kernel::parse(config, version)?);
-            }
-        }
-    }
-
-    Ok(installed_kernels)
 }
 
 /// Choose a kernel using dialoguer
@@ -146,9 +120,7 @@ fn read_config() -> Result<Config> {
             // Migrate from old configuration
             let old_conf = "{VERSION}-{LOCALVERSION}";
             let new_conf = "{VERSION}";
-            if config.vmlinuz.contains(old_conf)
-                || config.initrd.contains(old_conf)
-            {
+            if config.vmlinuz.contains(old_conf) || config.initrd.contains(old_conf) {
                 println_with_prefix_and_fl!("conf_old");
                 config.vmlinuz = config.vmlinuz.replace(old_conf, new_conf);
                 config.initrd = config.initrd.replace(old_conf, new_conf);
@@ -164,8 +136,8 @@ fn main() -> Result<()> {
     let matches: Opts = Opts::parse();
     // Read config, create a default one if the file is missing
     let config = read_config()?;
-    let installed_kernels = list_installed_kernels(&config)?;
-    let kernels = Kernel::list_kernels(&config)?;
+    let installed_kernels = Kernel::list_installed(&config)?;
+    let kernels = Kernel::list(&config)?;
     // Switch table
     match matches.subcommands {
         Some(s) => match s {

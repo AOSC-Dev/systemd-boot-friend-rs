@@ -1,6 +1,7 @@
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use std::{cmp::Ordering, fmt, fs, path::PathBuf};
+use regex::Regex;
 
 use crate::{
     fl, parser::parse_version, println_with_prefix, println_with_prefix_and_fl, Config,
@@ -18,19 +19,21 @@ pub struct Version {
     pub minor: u64,
     pub patch: u64,
     pub rc: Option<String>,
+    pub localversion: String,
 }
 
 impl fmt::Display for Version {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}.{}.{}{}",
+            "{}.{}.{}{}{}",
             self.major,
             self.minor,
             self.patch,
             self.rc
                 .as_ref()
                 .map_or_else(|| "".to_owned(), |s| format!("-{}", s)),
+            self.localversion
         )
     }
 }
@@ -39,7 +42,6 @@ impl fmt::Display for Version {
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Kernel {
     version: Version,
-    localversion: String,
     vmlinuz: String,
     initrd: String,
     distro: String,
@@ -61,22 +63,19 @@ impl PartialOrd for Kernel {
 
 impl fmt::Display for Kernel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", self.version, self.localversion)
+        write!(f, "{}", self.version)
     }
 }
 
 impl Kernel {
     /// Parse a kernel filename
     pub fn parse(config: &Config, kernel_name: &str) -> Result<Self> {
-        let vmlinuz;
-        let initrd;
-        let (version, localversion) = parse_version(kernel_name)?;
-        vmlinuz = config.vmlinuz.replace("{VERSION}", kernel_name);
-        initrd = config.initrd.replace("{VERSION}", kernel_name);
+        let version = parse_version(kernel_name)?;
+        let vmlinuz = config.vmlinuz.replace("{VERSION}", kernel_name);
+        let initrd = config.initrd.replace("{VERSION}", kernel_name);
 
         Ok(Self {
             version,
-            localversion,
             vmlinuz,
             initrd,
             distro: config.distro.to_owned(),
@@ -86,7 +85,7 @@ impl Kernel {
     }
 
     /// Generate a sorted vector of kernel filenames
-    pub fn list_kernels(config: &Config) -> Result<Vec<Self>> {
+    pub fn list(config: &Config) -> Result<Vec<Self>> {
         // read /usr/lib/modules to get kernel filenames
         let mut kernels = Vec::new();
         for f in fs::read_dir(MODULES_PATH)? {
@@ -110,6 +109,31 @@ impl Kernel {
         kernels.sort_by(|a, b| b.cmp(a));
 
         Ok(kernels)
+    }
+
+    /// Generate installed kernel list
+    pub fn list_installed(config: &Config) -> Result<Vec<Self>> {
+        // Construct regex for the template
+        let re = Regex::new(&config.vmlinuz.replace("{VERSION}", r"(?P<version>.+)"))?;
+        // Regex match group
+        let mut installed_kernels = Vec::new();
+        if let Ok(d) = fs::read_dir(config.esp_mountpoint.join(REL_DEST_PATH)) {
+            for x in d {
+                let filename = &x?
+                    .file_name()
+                    .into_string()
+                    .map_err(|_| anyhow!(fl!("invalid_kernel_filename")))?;
+                if let Some(c) = re.captures(filename) {
+                    let version = c
+                        .name("version")
+                        .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
+                        .as_str();
+                    installed_kernels.push(Self::parse(config, version)?);
+                }
+            }
+        }
+
+        Ok(installed_kernels)
     }
 
     /// Install a specific kernel to the esp using the given kernel filename
