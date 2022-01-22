@@ -39,6 +39,7 @@ fn version(input: &str) -> IResult<&str, Version> {
             rc,
             localversion: next.to_owned(),
         };
+
         (next, version)
     })
 }

@@ -53,6 +53,7 @@ fn choose_kernel(kernels: &[Kernel]) -> Result<Kernel> {
     if kernels.is_empty() {
         bail!(fl!("empty_list"));
     }
+
     // build dialoguer Select for kernel selection
     let n = Select::with_theme(&ColorfulTheme::default())
         .items(kernels)
@@ -67,8 +68,14 @@ fn update(installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
     for k in installed_kernels.iter() {
         k.remove()?;
     }
+
     for k in kernels.iter() {
         k.install_and_make_config(true)?;
+    }
+
+    // Set the newest kernel as default entry
+    if let Some(k) = kernels.first() {
+        k.set_default()?;
     }
 
     Ok(())
@@ -89,9 +96,11 @@ fn init(config: &Config, installed_kernels: &[Kernel], kernels: &[Kernel]) -> Re
         )
         .stderr(Stdio::null())
         .spawn()?;
+
     // create folder structure
     println_with_prefix_and_fl!("create_folder");
     fs::create_dir_all(config.esp_mountpoint.join(REL_DEST_PATH))?;
+
     // Update systemd-boot kernels and entries
     update(installed_kernels, kernels)
 }
@@ -117,15 +126,18 @@ fn read_config() -> Result<Config> {
         },
         |f| {
             let mut config: Config = toml::from_slice(&f)?;
+
             // Migrate from old configuration
             let old_conf = "{VERSION}-{LOCALVERSION}";
             let new_conf = "{VERSION}";
+
             if config.vmlinuz.contains(old_conf) || config.initrd.contains(old_conf) {
                 println_with_prefix_and_fl!("conf_old");
                 config.vmlinuz = config.vmlinuz.replace(old_conf, new_conf);
                 config.initrd = config.initrd.replace(old_conf, new_conf);
                 fs::write(CONF_PATH, toml::to_string_pretty(&config)?)?;
             }
+
             Ok(config)
         },
     )
@@ -134,10 +146,12 @@ fn read_config() -> Result<Config> {
 fn main() -> Result<()> {
     // CLI
     let matches: Opts = Opts::parse();
+
     // Read config, create a default one if the file is missing
     let config = read_config()?;
     let installed_kernels = Kernel::list_installed(&config)?;
     let kernels = Kernel::list(&config)?;
+
     // Switch table
     match matches.subcommands {
         Some(s) => match s {
@@ -161,6 +175,7 @@ fn main() -> Result<()> {
                         .clone(),
                 };
                 kernel.install_and_make_config(args.force)?;
+                kernel.ask_set_default()?;
             }
             SubCommands::ListInstalled(_) => {
                 for (i, k) in installed_kernels.iter().enumerate() {
@@ -180,7 +195,11 @@ fn main() -> Result<()> {
             }
             SubCommands::Update(_) => update(&installed_kernels, &kernels)?,
         },
-        None => choose_kernel(&kernels)?.install_and_make_config(false)?,
+        None => {
+            let kernel = choose_kernel(&kernels)?;
+            kernel.install_and_make_config(false)?;
+            kernel.ask_set_default()?;
+        }
     }
 
     Ok(())

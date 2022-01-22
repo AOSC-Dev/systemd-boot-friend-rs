@@ -25,6 +25,7 @@ dialoguer = "0.9"
 lazy_static = "1.4"
 regex = "1.5"
 nom = "7.1"
+systemd-boot-conf = "0.2"
 # i18n
 i18n-embed = { version = "0.13", features = ["fluent-system", "desktop-requester"]}
 i18n-embed-fl = "0.6"
