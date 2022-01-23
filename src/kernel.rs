@@ -1,42 +1,16 @@
 use anyhow::{anyhow, bail, Result};
 use dialoguer::{theme::ColorfulTheme, Confirm};
-use std::{cmp::Ordering, fmt, fs, path::PathBuf};
 use regex::Regex;
+use std::{cmp::Ordering, fmt, fs, path::PathBuf};
 
 use crate::{
-    fl, parser::parse_version, println_with_prefix, println_with_prefix_and_fl, Config,
-    REL_DEST_PATH,
+    fl, parser::Version, println_with_prefix, println_with_prefix_and_fl, Config, REL_DEST_PATH,
 };
 
 const SRC_PATH: &str = "/boot/";
 const UCODE: &str = "intel-ucode.img";
 const MODULES_PATH: &str = "/usr/lib/modules/";
 const REL_ENTRY_PATH: &str = "loader/entries/";
-
-#[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct Version {
-    pub major: u64,
-    pub minor: u64,
-    pub patch: u64,
-    pub rc: Option<String>,
-    pub localversion: String,
-}
-
-impl fmt::Display for Version {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}.{}.{}{}{}",
-            self.major,
-            self.minor,
-            self.patch,
-            self.rc
-                .as_ref()
-                .map_or_else(|| "".to_owned(), |s| format!("-{}", s)),
-            self.localversion
-        )
-    }
-}
 
 /// A kernel struct for parsing kernel filenames
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -70,7 +44,7 @@ impl fmt::Display for Kernel {
 impl Kernel {
     /// Parse a kernel filename
     pub fn parse(config: &Config, kernel_name: &str) -> Result<Self> {
-        let version = parse_version(kernel_name)?;
+        let version = Version::parse(kernel_name)?;
         let vmlinuz = config.vmlinuz.replace("{VERSION}", kernel_name);
         let initrd = config.initrd.replace("{VERSION}", kernel_name);
 
