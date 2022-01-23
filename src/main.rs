@@ -143,6 +143,13 @@ fn read_config() -> Result<Config> {
     )
 }
 
+#[inline]
+fn install(kernel: &Kernel, force: bool) -> Result<()> {
+    kernel.install_and_make_config(force)?;
+    kernel.ask_set_default()?;
+    Ok(())
+}
+
 fn main() -> Result<()> {
     // CLI
     let matches: Opts = Opts::parse();
@@ -174,8 +181,7 @@ fn main() -> Result<()> {
                         .ok_or_else(|| anyhow!(fl!("no_kernel")))?
                         .clone(),
                 };
-                kernel.install_and_make_config(args.force)?;
-                kernel.ask_set_default()?;
+                install(&kernel, args.force)?
             }
             SubCommands::ListInstalled(_) => {
                 for (i, k) in installed_kernels.iter().enumerate() {
@@ -195,11 +201,7 @@ fn main() -> Result<()> {
             }
             SubCommands::Update(_) => update(&installed_kernels, &kernels)?,
         },
-        None => {
-            let kernel = choose_kernel(&kernels)?;
-            kernel.install_and_make_config(false)?;
-            kernel.ask_set_default()?;
-        }
+        None => install(&choose_kernel(&kernels)?, true)?,
     }
 
     Ok(())
