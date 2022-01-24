@@ -75,6 +75,7 @@ fn version(input: &str) -> IResult<&str, Version> {
             rel,
             localversion: next.to_owned(),
         };
+
         (next, version)
     })
 }
