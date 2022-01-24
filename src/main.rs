@@ -65,13 +65,13 @@ fn choose_kernel(kernels: &[Kernel]) -> Result<Kernel> {
 
 /// Update systemd-boot kernels and entries
 fn update(installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
-    for k in installed_kernels.iter() {
-        k.remove()?;
-    }
+    // Remove existing kernels
+    installed_kernels.iter().try_for_each(|k| k.remove())?;
 
-    for k in kernels.iter() {
-        k.install_and_make_config(true)?;
-    }
+    // Install all kernels
+    kernels
+        .iter()
+        .try_for_each(|k| k.install_and_make_config(true))?;
 
     // Set the newest kernel as default entry
     if let Some(k) = kernels.first() {
@@ -107,24 +107,18 @@ fn init(config: &Config, installed_kernels: &[Kernel], kernels: &[Kernel]) -> Re
 
 #[inline]
 fn parse_num_or_filename(config: &Config, n: &str, kernels: &[Kernel]) -> Result<Kernel> {
-    Ok(match n.parse::<usize>() {
-        Ok(num) => kernels
+    match n.parse::<usize>() {
+        Ok(num) => Ok(kernels
             .get(num - 1)
             .ok_or_else(|| anyhow!(fl!("invalid_index")))?
-            .clone(),
-        Err(_) => Kernel::parse(config, n)?,
-    })
+            .clone()),
+        Err(_) => Kernel::parse(config, n),
+    }
 }
 
 fn read_config() -> Result<Config> {
-    fs::read(CONF_PATH).map_or_else(
-        |_| {
-            println_with_prefix_and_fl!("conf_default", conf_path = CONF_PATH);
-            fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
-            fs::write(CONF_PATH, toml::to_string_pretty(&Config::default())?)?;
-            bail!(fl!("edit_conf", conf_path = CONF_PATH))
-        },
-        |f| {
+    match fs::read(CONF_PATH) {
+        Ok(f) => {
             let mut config: Config = toml::from_slice(&f)?;
 
             // Migrate from old configuration
@@ -139,14 +133,41 @@ fn read_config() -> Result<Config> {
             }
 
             Ok(config)
-        },
-    )
+        }
+        Err(_) => {
+            println_with_prefix_and_fl!("conf_default", conf_path = CONF_PATH);
+            fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
+            fs::write(CONF_PATH, toml::to_string_pretty(&Config::default())?)?;
+            bail!(fl!("edit_conf", conf_path = CONF_PATH))
+        }
+    }
+}
+
+#[inline]
+fn specify_or_choose(config: &Config, arg: Option<String>, kernels: &[Kernel]) -> Result<Kernel> {
+    match arg {
+        // the target can be both the number in
+        // the list and the name of the kernel
+        Some(n) => parse_num_or_filename(config, &n, kernels),
+        // select the kernel to remove
+        // when no target is given
+        None => choose_kernel(kernels),
+    }
+}
+
+#[inline]
+fn print_kernels(kernels: &[Kernel]) {
+    kernels
+        .iter()
+        .enumerate()
+        .for_each(|(i, k)| println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k))
 }
 
 #[inline]
 fn install(kernel: &Kernel, force: bool) -> Result<()> {
     kernel.install_and_make_config(force)?;
     kernel.ask_set_default()?;
+
     Ok(())
 }
 
@@ -163,45 +184,18 @@ fn main() -> Result<()> {
     match matches.subcommands {
         Some(s) => match s {
             SubCommands::Init(_) => init(&config, &installed_kernels, &kernels)?,
-            SubCommands::List(_) => {
-                // list available kernels
-                for (i, k) in kernels.iter().enumerate() {
-                    println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k);
-                }
-            }
-            SubCommands::Install(args) => {
-                let kernel = match args.target {
-                    // the target can be both the number in
-                    // the list and the name of the kernel
-                    Some(n) => parse_num_or_filename(&config, &n, &kernels)?,
-                    // install the newest kernel
-                    // when no target is given
-                    None => kernels
-                        .first()
-                        .ok_or_else(|| anyhow!(fl!("no_kernel")))?
-                        .clone(),
-                };
-                install(&kernel, args.force)?
-            }
-            SubCommands::ListInstalled(_) => {
-                for (i, k) in installed_kernels.iter().enumerate() {
-                    println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k);
-                }
-            }
+            SubCommands::List(_) => print_kernels(&kernels),
+            SubCommands::Install(args) => install(
+                &specify_or_choose(&config, args.target, &kernels)?,
+                args.force,
+            )?,
+            SubCommands::ListInstalled(_) => print_kernels(&installed_kernels),
             SubCommands::Remove(args) => {
-                let kernel = match args.target {
-                    // the target can be both the number in
-                    // the list and the name of the kernel
-                    Some(n) => parse_num_or_filename(&config, &n, &installed_kernels)?,
-                    // select the kernel to remove
-                    // when no target is given
-                    None => choose_kernel(&installed_kernels)?,
-                };
-                kernel.remove()?;
+                specify_or_choose(&config, args.target, &installed_kernels)?.remove()?
             }
             SubCommands::Update(_) => update(&installed_kernels, &kernels)?,
         },
-        None => install(&choose_kernel(&kernels)?, true)?,
+        None => install(&choose_kernel(&kernels)?, false)?,
     }
 
     Ok(())

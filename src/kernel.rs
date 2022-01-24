@@ -92,7 +92,7 @@ impl Kernel {
             }
         }
 
-        // Sort the vector, thus the kernel filenames are
+        // Sort the vector, thus the kernels are
         // arranged with versions from newer to older
         kernels.sort_by(|a, b| b.cmp(a));
 
@@ -124,6 +124,10 @@ impl Kernel {
                 }
             }
         }
+
+        // Sort the vector, thus the kernels are
+        // arranged with versions from newer to older
+        installed_kernels.sort_by(|a, b| b.cmp(a));
 
         Ok(installed_kernels)
     }
@@ -247,16 +251,32 @@ impl Kernel {
                 .join(format!("loader/entries/{}", self.entry)),
         )?;
 
+        self.remove_default()?;
+
         Ok(())
     }
 
     // Set default entry
     pub fn set_default(&self) -> Result<()> {
+        println_with_prefix_and_fl!("set_default", kernel = self.to_string());
+
         let mut conf = SystemdBootConf::new(&self.esp_mountpoint)?;
 
-        println_with_prefix_and_fl!("set_default", kernel = self.to_string());
         conf.loader_conf.default = Some(Box::from(self.entry.as_str()));
         conf.overwrite_loader_conf()?;
+
+        Ok(())
+    }
+
+    // Remove default entry
+    pub fn remove_default(&self) -> Result<()> {
+        let mut conf = SystemdBootConf::new(&self.esp_mountpoint)?;
+
+        if conf.loader_conf.default == Some(Box::from(self.entry.as_str())) {
+            println_with_prefix_and_fl!("remove_default", kernel = self.to_string());
+            conf.loader_conf.default = None;
+            conf.overwrite_loader_conf()?;
+        }
 
         Ok(())
     }
