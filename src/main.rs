@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use clap::Parser;
 use cli::{Opts, SubCommands};
 use core::default::Default;
-use dialoguer::{theme::ColorfulTheme, Select};
+use dialoguer::{theme::ColorfulTheme, Select, Confirm};
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -103,7 +103,14 @@ fn init(config: &Config, installed_kernels: &[Kernel], kernels: &[Kernel]) -> Re
     fs::create_dir_all(config.esp_mountpoint.join(REL_DEST_PATH))?;
 
     // Update systemd-boot kernels and entries
-    update(installed_kernels, kernels)
+    Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt(fl!("ask_update"))
+        .default(false)
+        .interact()?
+        .then(|| update(installed_kernels, kernels))
+        .transpose()?;
+
+    Ok(())
 }
 
 #[inline]

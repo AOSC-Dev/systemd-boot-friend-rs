@@ -27,3 +27,4 @@ ask_set_default = 是否要將 {$kernel} 設為默認開機選項？
 remove_default = 正在刪除默認開機選項 {$kernel} ...
 select_install = 請選擇要安裝的核心
 select_remove = 請選擇要刪除的核心
+ask_update = 是否要安裝所有核心及開機選項？（可在初始化完成後手動操作）

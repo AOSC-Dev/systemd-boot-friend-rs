@@ -27,3 +27,4 @@ ask_set_default = 是否要将 {$kernel} 设为默认启动项？
 remove_default = 正在移除启动项 {$kernel} ...
 select_install = 请选择要安装的内核
 select_remove = 请选择要移除的内核
+ask_update = 是否要安装所有内核及启动项？（可在初始化完成后手动操作）

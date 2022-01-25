@@ -27,3 +27,4 @@ ask_set_default = Would you like to set {$kernel} as default boot entry?
 remove_default = Removing default boot entry {$kernel} ...
 select_install = Select a kernel to install
 select_remove = Select a kernel to remove
+ask_update = Would you like to install all kernels and boot entries? (You can do this after the initialization)
