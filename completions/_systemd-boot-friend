@@ -34,13 +34,13 @@ _arguments "${_arguments_options[@]}" \
 '--help[Print help information]' \
 && ret=0
 ;;
-(list)
+(update)
 _arguments "${_arguments_options[@]}" \
 '-h[Print help information]' \
 '--help[Print help information]' \
 && ret=0
 ;;
-(install)
+(install-kernel)
 _arguments "${_arguments_options[@]}" \
 '-f[force overwrite the entry config or not]' \
 '--force[force overwrite the entry config or not]' \
@@ -49,20 +49,20 @@ _arguments "${_arguments_options[@]}" \
 '::target:' \
 && ret=0
 ;;
-(list-installed)
-_arguments "${_arguments_options[@]}" \
-'-h[Print help information]' \
-'--help[Print help information]' \
-&& ret=0
-;;
-(remove)
+(remove-kernel)
 _arguments "${_arguments_options[@]}" \
 '-h[Print help information]' \
 '--help[Print help information]' \
 '::target:' \
 && ret=0
 ;;
-(update)
+(list-available)
+_arguments "${_arguments_options[@]}" \
+'-h[Print help information]' \
+'--help[Print help information]' \
+&& ret=0
+;;
+(list-installed)
 _arguments "${_arguments_options[@]}" \
 '-h[Print help information]' \
 '--help[Print help information]' \
@@ -82,11 +82,11 @@ esac
 _systemd-boot-friend_commands() {
     local commands; commands=(
 'init:Initialize systemd-boot-friend' \
-'list:List all available kernels' \
-'install:Install the kernel specified' \
-'list-installed:List all installed kernels' \
-'remove:Remove the kernel specified' \
 'update:Install all kernels and update boot entries' \
+'install-kernel:Install the kernel specified' \
+'remove-kernel:Remove the kernel specified' \
+'list-available:List all available kernels' \
+'list-installed:List all installed kernels' \
 'help:Print this message or the help of the given subcommand(s)' \
     )
     _describe -t commands 'systemd-boot-friend commands' commands "$@"
@@ -101,25 +101,25 @@ _systemd-boot-friend__init_commands() {
     local commands; commands=()
     _describe -t commands 'systemd-boot-friend init commands' commands "$@"
 }
-(( $+functions[_systemd-boot-friend__install_commands] )) ||
-_systemd-boot-friend__install_commands() {
+(( $+functions[_systemd-boot-friend__install-kernel_commands] )) ||
+_systemd-boot-friend__install-kernel_commands() {
     local commands; commands=()
-    _describe -t commands 'systemd-boot-friend install commands' commands "$@"
+    _describe -t commands 'systemd-boot-friend install-kernel commands' commands "$@"
 }
-(( $+functions[_systemd-boot-friend__list_commands] )) ||
-_systemd-boot-friend__list_commands() {
+(( $+functions[_systemd-boot-friend__list-available_commands] )) ||
+_systemd-boot-friend__list-available_commands() {
     local commands; commands=()
-    _describe -t commands 'systemd-boot-friend list commands' commands "$@"
+    _describe -t commands 'systemd-boot-friend list-available commands' commands "$@"
 }
 (( $+functions[_systemd-boot-friend__list-installed_commands] )) ||
 _systemd-boot-friend__list-installed_commands() {
     local commands; commands=()
     _describe -t commands 'systemd-boot-friend list-installed commands' commands "$@"
 }
-(( $+functions[_systemd-boot-friend__remove_commands] )) ||
-_systemd-boot-friend__remove_commands() {
+(( $+functions[_systemd-boot-friend__remove-kernel_commands] )) ||
+_systemd-boot-friend__remove-kernel_commands() {
     local commands; commands=()
-    _describe -t commands 'systemd-boot-friend remove commands' commands "$@"
+    _describe -t commands 'systemd-boot-friend remove-kernel commands' commands "$@"
 }
 (( $+functions[_systemd-boot-friend__update_commands] )) ||
 _systemd-boot-friend__update_commands() {

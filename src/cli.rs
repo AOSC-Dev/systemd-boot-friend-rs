@@ -1,8 +1,8 @@
-use clap::Parser;
+use clap::{AppSettings, Parser};
 
 /// Kernel Version Manager for systemd-boot
 #[derive(Parser, Debug)]
-#[clap(about, author, version)]
+#[clap(about, author, version, setting = AppSettings::ArgRequiredElseHelp)]
 pub struct Opts {
     #[clap(subcommand)]
     pub subcommands: Option<SubCommands>,
@@ -11,15 +11,21 @@ pub struct Opts {
 #[derive(Parser, Debug)]
 pub enum SubCommands {
     /// Initialize systemd-boot-friend
+    #[clap(display_order = 1)]
     Init,
-    /// List all available kernels
-    List,
-    Install(Install),
-    /// List all installed kernels
-    ListInstalled,
-    Remove(Remove),
     /// Install all kernels and update boot entries
+    #[clap(display_order = 2)]
     Update,
+    #[clap(display_order = 3)]
+    InstallKernel(Install),
+    #[clap(display_order = 4)]
+    RemoveKernel(Remove),
+    /// List all available kernels
+    #[clap(display_order = 5)]
+    ListAvailable,
+    /// List all installed kernels
+    #[clap(display_order = 6)]
+    ListInstalled,
 }
 
 /// Install the kernel specified

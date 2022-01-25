@@ -49,13 +49,14 @@ impl Default for Config {
 }
 
 /// Choose a kernel using dialoguer
-fn choose_kernel(kernels: &[Kernel]) -> Result<Kernel> {
+fn choose_kernel(kernels: &[Kernel], prompt: String) -> Result<Kernel> {
     if kernels.is_empty() {
         bail!(fl!("empty_list"));
     }
 
     // build dialoguer Select for kernel selection
     let n = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt(prompt)
         .items(kernels)
         .default(0)
         .interact()?;
@@ -144,14 +145,19 @@ fn read_config() -> Result<Config> {
 }
 
 #[inline]
-fn specify_or_choose(config: &Config, arg: Option<String>, kernels: &[Kernel]) -> Result<Kernel> {
+fn specify_or_choose(
+    config: &Config,
+    arg: Option<String>,
+    kernels: &[Kernel],
+    prompt: String,
+) -> Result<Kernel> {
     match arg {
         // the target can be both the number in
         // the list and the name of the kernel
         Some(n) => parse_num_or_filename(config, &n, kernels),
         // select the kernel to remove
         // when no target is given
-        None => choose_kernel(kernels),
+        None => choose_kernel(kernels, prompt),
     }
 }
 
@@ -184,18 +190,22 @@ fn main() -> Result<()> {
     match matches.subcommands {
         Some(s) => match s {
             SubCommands::Init => init(&config, &installed_kernels, &kernels)?,
-            SubCommands::List => print_kernels(&kernels),
-            SubCommands::Install(args) => install(
-                &specify_or_choose(&config, args.target, &kernels)?,
+            SubCommands::Update => update(&installed_kernels, &kernels)?,
+            SubCommands::InstallKernel(args) => install(
+                &specify_or_choose(&config, args.target, &kernels, fl!("select_install"))?,
                 args.force,
             )?,
+            SubCommands::RemoveKernel(args) => specify_or_choose(
+                &config,
+                args.target,
+                &installed_kernels,
+                fl!("select_remove"),
+            )?
+            .remove()?,
+            SubCommands::ListAvailable => print_kernels(&kernels),
             SubCommands::ListInstalled => print_kernels(&installed_kernels),
-            SubCommands::Remove(args) => {
-                specify_or_choose(&config, args.target, &installed_kernels)?.remove()?
-            }
-            SubCommands::Update => update(&installed_kernels, &kernels)?,
         },
-        None => install(&choose_kernel(&kernels)?, false)?,
+        None => unreachable!(),
     }
 
     Ok(())

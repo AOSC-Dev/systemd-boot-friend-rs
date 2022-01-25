@@ -18,17 +18,17 @@ _systemd-boot-friend() {
             init)
                 cmd+="__init"
                 ;;
-            install)
-                cmd+="__install"
+            install-kernel)
+                cmd+="__install__kernel"
                 ;;
-            list)
-                cmd+="__list"
+            list-available)
+                cmd+="__list__available"
                 ;;
             list-installed)
                 cmd+="__list__installed"
                 ;;
-            remove)
-                cmd+="__remove"
+            remove-kernel)
+                cmd+="__remove__kernel"
                 ;;
             update)
                 cmd+="__update"
@@ -40,7 +40,7 @@ _systemd-boot-friend() {
 
     case "${cmd}" in
         systemd__boot__friend)
-            opts="-h -V --help --version init list install list-installed remove update help"
+            opts="-h -V --help --version init update install-kernel remove-kernel list-available list-installed help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -81,7 +81,7 @@ _systemd-boot-friend() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        systemd__boot__friend__install)
+        systemd__boot__friend__install__kernel)
             opts="-f -h --force --help <TARGET>"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -95,7 +95,7 @@ _systemd-boot-friend() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        systemd__boot__friend__list)
+        systemd__boot__friend__list__available)
             opts="-h --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -123,7 +123,7 @@ _systemd-boot-friend() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        systemd__boot__friend__remove)
+        systemd__boot__friend__remove__kernel)
             opts="-h --help <TARGET>"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
