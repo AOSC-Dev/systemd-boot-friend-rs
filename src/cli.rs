@@ -1,8 +1,8 @@
-use clap::{crate_authors, crate_version, Parser};
+use clap::Parser;
 
 /// Kernel Version Manager for systemd-boot
 #[derive(Parser, Debug)]
-#[clap(version = crate_version!(), author = crate_authors!())]
+#[clap(about, author, version)]
 pub struct Opts {
     #[clap(subcommand)]
     pub subcommands: Option<SubCommands>,
@@ -10,21 +10,17 @@ pub struct Opts {
 
 #[derive(Parser, Debug)]
 pub enum SubCommands {
-    Init(Init),
-    List(List),
+    /// Initialize systemd-boot-friend
+    Init,
+    /// List all available kernels
+    List,
     Install(Install),
-    ListInstalled(ListInstalled),
+    /// List all installed kernels
+    ListInstalled,
     Remove(Remove),
-    Update(Update),
+    /// Install all kernels and update boot entries
+    Update,
 }
-
-/// Initialize systemd-boot-friend
-#[derive(Parser, Debug)]
-pub struct Init;
-
-/// List all available kernels
-#[derive(Parser, Debug)]
-pub struct List;
 
 /// Install the kernel specified
 #[derive(Parser, Debug)]
@@ -35,16 +31,8 @@ pub struct Install {
     pub force: bool,
 }
 
-/// List all installed kernels
-#[derive(Parser, Debug)]
-pub struct ListInstalled;
-
 /// Remove the kernel specified
 #[derive(Parser, Debug)]
 pub struct Remove {
     pub target: Option<String>,
 }
-
-/// Install all kernels and update boot entries
-#[derive(Parser, Debug)]
-pub struct Update;

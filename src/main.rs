@@ -183,17 +183,17 @@ fn main() -> Result<()> {
     // Switch table
     match matches.subcommands {
         Some(s) => match s {
-            SubCommands::Init(_) => init(&config, &installed_kernels, &kernels)?,
-            SubCommands::List(_) => print_kernels(&kernels),
+            SubCommands::Init => init(&config, &installed_kernels, &kernels)?,
+            SubCommands::List => print_kernels(&kernels),
             SubCommands::Install(args) => install(
                 &specify_or_choose(&config, args.target, &kernels)?,
                 args.force,
             )?,
-            SubCommands::ListInstalled(_) => print_kernels(&installed_kernels),
+            SubCommands::ListInstalled => print_kernels(&installed_kernels),
             SubCommands::Remove(args) => {
                 specify_or_choose(&config, args.target, &installed_kernels)?.remove()?
             }
-            SubCommands::Update(_) => update(&installed_kernels, &kernels)?,
+            SubCommands::Update => update(&installed_kernels, &kernels)?,
         },
         None => install(&choose_kernel(&kernels)?, false)?,
     }
