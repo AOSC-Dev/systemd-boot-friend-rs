@@ -148,11 +148,7 @@ impl Kernel {
         }
 
         // generate the path to the source files
-        println_with_prefix_and_fl!(
-            "install",
-            kernel = self.to_string(),
-            path = dest_path.to_string_lossy()
-        );
+        println_with_prefix_and_fl!("install", kernel = self.to_string());
 
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
