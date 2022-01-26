@@ -7,12 +7,27 @@ macro_rules! println_with_prefix {
 }
 
 #[macro_export]
-macro_rules! println_with_prefix_and_fl {
+macro_rules! print_block_with_fl {
     ($message_id:literal) => {
-        println_with_prefix!("{}", fl!($message_id));
+        eprintln!("\n{}\n", fl!($message_id))
     };
 
     ($message_id:literal, $($args:expr), *) => {
-        println_with_prefix!("{}", fl!($message_id, $($args), *));
+        eprintln!("\n{}\n", fl!($message_id, $($args), *))
+    }
+}
+
+#[macro_export]
+macro_rules! println_with_prefix_and_fl {
+    ($message_id:literal) => {
+        for line in fl!($message_id).lines() {
+            println_with_prefix!("{}", line);
+        }
+    };
+
+    ($message_id:literal, $($args:expr), *) => {
+        for line in fl!($message_id, $($args), *).lines() {
+            println_with_prefix!("{}", line);
+        }
     };
 }

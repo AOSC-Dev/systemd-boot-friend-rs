@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use clap::Parser;
 use cli::{Opts, SubCommands};
 use core::default::Default;
-use dialoguer::{theme::ColorfulTheme, Select, Confirm};
+use dialoguer::{Confirm, Select};
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -55,7 +55,7 @@ fn choose_kernel(kernels: &[Kernel], prompt: String) -> Result<Kernel> {
     }
 
     // build dialoguer Select for kernel selection
-    let n = Select::with_theme(&ColorfulTheme::default())
+    let n = Select::new()
         .with_prompt(prompt)
         .items(kernels)
         .default(0)
@@ -64,8 +64,78 @@ fn choose_kernel(kernels: &[Kernel], prompt: String) -> Result<Kernel> {
     Ok(kernels[n].clone())
 }
 
+#[inline]
+fn specify_or_choose(
+    config: &Config,
+    arg: Option<String>,
+    kernels: &[Kernel],
+    prompt: String,
+) -> Result<Kernel> {
+    match arg {
+        // the target can be both the number in
+        // the list and the name of the kernel
+        Some(n) => parse_num_or_filename(config, &n, kernels),
+        // select the kernel to remove
+        // when no target is given
+        None => choose_kernel(kernels, prompt),
+    }
+}
+
+#[inline]
+fn parse_num_or_filename(config: &Config, n: &str, kernels: &[Kernel]) -> Result<Kernel> {
+    match n.parse::<usize>() {
+        Ok(num) => Ok(kernels
+            .get(num - 1)
+            .ok_or_else(|| anyhow!(fl!("invalid_index")))?
+            .clone()),
+        Err(_) => Kernel::parse(config, n),
+    }
+}
+
+/// Initialize the default environment for friend
+fn init(config: &Config, installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
+    // use bootctl to install systemd-boot
+    println_with_prefix_and_fl!("init");
+    print_block_with_fl!("prompt_init");
+
+    if Confirm::new()
+        .with_prompt(fl!("ask_init"))
+        .default(false)
+        .interact()?
+    {
+        Command::new("bootctl")
+            .arg("install")
+            .arg(
+                "--esp=".to_owned()
+                    + config
+                        .esp_mountpoint
+                        .to_str()
+                        .ok_or_else(|| anyhow!(fl!("invalid_esp")))?,
+            )
+            .stderr(Stdio::null())
+            .spawn()?;
+
+        // create folder structure
+        println_with_prefix_and_fl!("create_folder");
+        fs::create_dir_all(config.esp_mountpoint.join(REL_DEST_PATH))?;
+
+        // Update systemd-boot kernels and entries
+        print_block_with_fl!("prompt_update");
+        Confirm::new()
+            .with_prompt(fl!("ask_update"))
+            .default(false)
+            .interact()?
+            .then(|| update(installed_kernels, kernels))
+            .transpose()?;
+    }
+
+    Ok(())
+}
+
 /// Update systemd-boot kernels and entries
 fn update(installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
+    println_with_prefix_and_fl!("update");
+
     // Remove existing kernels
     installed_kernels.iter().try_for_each(|k| k.remove())?;
 
@@ -82,46 +152,20 @@ fn update(installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
     Ok(())
 }
 
-/// Initialize the default environment for friend
-fn init(config: &Config, installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
-    // use bootctl to install systemd-boot
-    println_with_prefix_and_fl!("initialize");
-    Command::new("bootctl")
-        .arg("install")
-        .arg(
-            "--esp=".to_owned()
-                + config
-                    .esp_mountpoint
-                    .to_str()
-                    .ok_or_else(|| anyhow!(fl!("invalid_esp")))?,
-        )
-        .stderr(Stdio::null())
-        .spawn()?;
-
-    // create folder structure
-    println_with_prefix_and_fl!("create_folder");
-    fs::create_dir_all(config.esp_mountpoint.join(REL_DEST_PATH))?;
-
-    // Update systemd-boot kernels and entries
-    Confirm::with_theme(&ColorfulTheme::default())
-        .with_prompt(fl!("ask_update"))
-        .default(false)
-        .interact()?
-        .then(|| update(installed_kernels, kernels))
-        .transpose()?;
+#[inline]
+fn install(kernel: &Kernel, force: bool) -> Result<()> {
+    kernel.install_and_make_config(force)?;
+    kernel.ask_set_default()?;
 
     Ok(())
 }
 
 #[inline]
-fn parse_num_or_filename(config: &Config, n: &str, kernels: &[Kernel]) -> Result<Kernel> {
-    match n.parse::<usize>() {
-        Ok(num) => Ok(kernels
-            .get(num - 1)
-            .ok_or_else(|| anyhow!(fl!("invalid_index")))?
-            .clone()),
-        Err(_) => Kernel::parse(config, n),
-    }
+fn print_kernels(kernels: &[Kernel]) {
+    kernels
+        .iter()
+        .enumerate()
+        .for_each(|(i, k)| println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k))
 }
 
 fn read_config() -> Result<Config> {
@@ -149,39 +193,6 @@ fn read_config() -> Result<Config> {
             bail!(fl!("edit_conf", conf_path = CONF_PATH))
         }
     }
-}
-
-#[inline]
-fn specify_or_choose(
-    config: &Config,
-    arg: Option<String>,
-    kernels: &[Kernel],
-    prompt: String,
-) -> Result<Kernel> {
-    match arg {
-        // the target can be both the number in
-        // the list and the name of the kernel
-        Some(n) => parse_num_or_filename(config, &n, kernels),
-        // select the kernel to remove
-        // when no target is given
-        None => choose_kernel(kernels, prompt),
-    }
-}
-
-#[inline]
-fn print_kernels(kernels: &[Kernel]) {
-    kernels
-        .iter()
-        .enumerate()
-        .for_each(|(i, k)| println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k))
-}
-
-#[inline]
-fn install(kernel: &Kernel, force: bool) -> Result<()> {
-    kernel.install_and_make_config(force)?;
-    kernel.ask_set_default()?;
-
-    Ok(())
 }
 
 fn main() -> Result<()> {
