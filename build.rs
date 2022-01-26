@@ -1,35 +1,19 @@
 use clap::IntoApp;
-use clap_complete::{
-    generate_to,
-    shells::{Bash, Fish, Zsh},
-};
+use clap_complete::{generate_to, Shell};
 use std::{env, fs, io::Result};
 
 include!("src/cli.rs");
 
 const ROOT: &str = "completions";
 const APP: &str = "systemd-boot-friend";
-
-macro_rules! generate_shell_completions {
-    ($app:ident, $shell:ident, $($shells:ident),+) => {
-        generate_shell_completions!($app, $shell);
-        generate_shell_completions!($app, $($shells),+);
-    };
-
-    ($app:ident, $shell:ident) => {
-        generate_to(
-            $shell,
-            &mut $app,
-            APP,
-            ROOT,
-        )?;
-    };
-}
+const GENERATED_COMPLETIONS: &[Shell] = &[Shell::Bash, Shell::Zsh, Shell::Fish];
 
 fn generate_completions() -> Result<()> {
     fs::create_dir_all(ROOT)?;
     let mut app = Opts::into_app();
-    generate_shell_completions!(app, Bash, Zsh, Fish);
+    for shell in GENERATED_COMPLETIONS {
+        generate_to(*shell, &mut app, APP, ROOT)?;
+    }
 
     Ok(())
 }

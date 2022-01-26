@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Result};
-use dialoguer::{theme::ColorfulTheme, Confirm};
+use dialoguer::Confirm;
 use regex::Regex;
 
 use std::{
@@ -11,7 +11,8 @@ use std::{
 use systemd_boot_conf::SystemdBootConf;
 
 use crate::{
-    fl, parser::Version, println_with_prefix, println_with_prefix_and_fl, Config, REL_DEST_PATH,
+    fl, parser::Version, print_block_with_fl, println_with_prefix, println_with_prefix_and_fl,
+    Config, REL_DEST_PATH,
 };
 
 const SRC_PATH: &str = "/boot/";
@@ -139,7 +140,7 @@ impl Kernel {
         let src_path = PathBuf::from(SRC_PATH);
 
         if !dest_path.exists() {
-            println_with_prefix_and_fl!("info_path_not_exist");
+            print_block_with_fl!("info_path_not_exist");
             bail!(fl!(
                 "err_path_not_exist",
                 path = dest_path.to_string_lossy()
@@ -178,7 +179,7 @@ impl Kernel {
         let entries_path = self.esp_mountpoint.join(REL_ENTRY_PATH);
 
         if !entries_path.exists() {
-            println_with_prefix_and_fl!("info_path_not_exist");
+            print_block_with_fl!("info_path_not_exist");
             bail!(fl!(
                 "err_path_not_exist",
                 path = entries_path.to_string_lossy()
@@ -189,7 +190,7 @@ impl Kernel {
         let entry_path = entries_path.join(&self.entry);
 
         if entry_path.exists() && !force_write {
-            let overwrite = Confirm::with_theme(&ColorfulTheme::default())
+            let overwrite = Confirm::new()
                 .with_prompt(fl!("ask_overwrite", entry = entry_path.to_string_lossy()))
                 .default(false)
                 .interact()?;
@@ -205,11 +206,7 @@ impl Kernel {
         }
 
         // Generate entry config
-        println_with_prefix_and_fl!(
-            "create_entry",
-            kernel = self.to_string(),
-            path = entry_path.to_string_lossy()
-        );
+        println_with_prefix_and_fl!("create_entry", kernel = self.to_string());
 
         let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
         let rel_dest_path = PathBuf::from(REL_DEST_PATH);
@@ -283,7 +280,7 @@ impl Kernel {
 
     #[inline]
     pub fn ask_set_default(&self) -> Result<()> {
-        Confirm::with_theme(&ColorfulTheme::default())
+        Confirm::new()
             .with_prompt(fl!("ask_set_default", kernel = self.to_string()))
             .default(false)
             .interact()?
