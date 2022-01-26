@@ -1,4 +1,4 @@
-# Your systemd-boot's best friend ever (Implemented in Rust)
+# Your systemd-boot's best friend ever (hopefully)
 
 A kernel version manager for systemd-boot
 
@@ -14,7 +14,7 @@ systemd-boot-friend init
 You can also manually choose the kernel you would like to install.
 
 ```bash
-systemd-boot-friend
+systemd-boot-friend install
 ```
 
 Subcommands are also supported, you may look up for them by
@@ -32,6 +32,12 @@ For further information, visit https://wiki.aosc.io/software/systemd-boot-friend
 cargo build --release
 install -Dm755 target/release/systemd-boot-friend /usr/local/bin/systemd-boot-friend
 PREFIX=/usr/local ./install-assets.sh
+```
+
+Or from crates.io
+
+```bash
+cargo install systemd-boot-friend-rs
 ```
 
 ## Dependencies
