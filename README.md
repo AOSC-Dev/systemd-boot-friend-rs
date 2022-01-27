@@ -14,7 +14,7 @@ systemd-boot-friend init
 You can also manually choose the kernel you would like to install.
 
 ```bash
-systemd-boot-friend install
+systemd-boot-friend install-kernel
 ```
 
 Subcommands are also supported, you may look up for them by
