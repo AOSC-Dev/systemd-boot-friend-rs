@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use clap::Parser;
 use cli::{Opts, SubCommands};
 use core::default::Default;
-use dialoguer::{Confirm, Select};
+use dialoguer::{Confirm, MultiSelect};
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -49,36 +49,19 @@ impl Default for Config {
 }
 
 /// Choose a kernel using dialoguer
-fn choose_kernel(kernels: &[Kernel], prompt: String) -> Result<Kernel> {
+fn choose_kernel(kernels: &[Kernel], prompt: String) -> Result<Vec<Kernel>> {
     if kernels.is_empty() {
         bail!(fl!("empty_list"));
     }
 
-    // build dialoguer Select for kernel selection
-    let n = Select::new()
+    // build dialoguer MultiSelect for kernel selection
+    Ok(MultiSelect::new()
         .with_prompt(prompt)
         .items(kernels)
-        .default(0)
-        .interact()?;
-
-    Ok(kernels[n].clone())
-}
-
-#[inline]
-fn specify_or_choose(
-    config: &Config,
-    arg: Option<String>,
-    kernels: &[Kernel],
-    prompt: String,
-) -> Result<Kernel> {
-    match arg {
-        // the target can be both the number in
-        // the list and the name of the kernel
-        Some(n) => parse_num_or_filename(config, &n, kernels),
-        // select the kernel to remove
-        // when no target is given
-        None => choose_kernel(kernels, prompt),
-    }
+        .interact()?
+        .iter()
+        .map(|n| kernels[*n].clone())
+        .collect())
 }
 
 #[inline]
@@ -89,6 +72,23 @@ fn parse_num_or_filename(config: &Config, n: &str, kernels: &[Kernel]) -> Result
             .ok_or_else(|| anyhow!(fl!("invalid_index")))?
             .clone()),
         Err(_) => Kernel::parse(config, n),
+    }
+}
+
+#[inline]
+fn specify_or_choose(
+    config: &Config,
+    arg: Option<String>,
+    kernels: &[Kernel],
+    prompt: String,
+) -> Result<Vec<Kernel>> {
+    match arg {
+        // the target can be both the number in
+        // the list and the name of the kernel
+        Some(n) => Ok(vec![parse_num_or_filename(config, &n, kernels)?]),
+        // select the kernel to remove
+        // when no target is given
+        None => choose_kernel(kernels, prompt),
     }
 }
 
@@ -209,17 +209,20 @@ fn main() -> Result<()> {
         Some(s) => match s {
             SubCommands::Init => init(&config, &installed_kernels, &kernels)?,
             SubCommands::Update => update(&installed_kernels, &kernels)?,
-            SubCommands::InstallKernel(args) => install(
-                &specify_or_choose(&config, args.target, &kernels, fl!("select_install"))?,
-                args.force,
-            )?,
+            SubCommands::InstallKernel(args) => {
+                let force = args.force;
+                specify_or_choose(&config, args.target, &kernels, fl!("select_install"))?
+                    .iter()
+                    .try_for_each(|k| install(k, force))?
+            }
             SubCommands::RemoveKernel(args) => specify_or_choose(
                 &config,
                 args.target,
                 &installed_kernels,
                 fl!("select_remove"),
             )?
-            .remove()?,
+            .iter()
+            .try_for_each(|k| k.remove())?,
             SubCommands::ListAvailable => print_kernels(&kernels),
             SubCommands::ListInstalled => print_kernels(&installed_kernels),
         },
