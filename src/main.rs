@@ -135,6 +135,7 @@ fn init(config: &Config, installed_kernels: &[Kernel], kernels: &[Kernel]) -> Re
 /// Update systemd-boot kernels and entries
 fn update(installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
     println_with_prefix_and_fl!("update");
+    print_block_with_fl!("note_copy_files");
 
     // Remove existing kernels
     installed_kernels.iter().try_for_each(|k| k.remove())?;
@@ -154,6 +155,8 @@ fn update(installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
 
 #[inline]
 fn install(kernel: &Kernel, force: bool) -> Result<()> {
+    print_block_with_fl!("note_copy_files");
+
     kernel.install_and_make_config(force)?;
     kernel.ask_set_default()?;
 

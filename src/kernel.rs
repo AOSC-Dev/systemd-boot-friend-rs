@@ -5,8 +5,8 @@ use regex::Regex;
 use std::{
     cmp::Ordering,
     fmt, fs,
-    io::{prelude::*, BufWriter},
-    path::PathBuf,
+    io::prelude::*,
+    path::{Path, PathBuf},
 };
 use systemd_boot_conf::SystemdBootConf;
 
@@ -19,6 +19,17 @@ const SRC_PATH: &str = "/boot/";
 const UCODE: &str = "intel-ucode.img";
 const MODULES_PATH: &str = "/usr/lib/modules/";
 const REL_ENTRY_PATH: &str = "loader/entries/";
+
+// Make sure the copy is complete, otherwise possible ENOSPC (No space left on device)
+fn safe_copy<P: AsRef<Path>>(src: P, dest: P) -> Result<()> {
+    if fs::metadata(&src)?.len() != fs::copy(&src, &dest)? {
+        // Remove incomplete copy
+        fs::remove_file(&dest)?;
+        bail!(fl!("no_space"));
+    }
+
+    Ok(())
+}
 
 /// A kernel struct for parsing kernel filenames
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -152,8 +163,13 @@ impl Kernel {
 
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
-        fs::copy(src_path.join(&self.vmlinuz), dest_path.join(&self.vmlinuz))?;
-        fs::copy(src_path.join(&self.initrd), dest_path.join(&self.initrd)).ok();
+        safe_copy(src_path.join(&self.vmlinuz), dest_path.join(&self.vmlinuz))?;
+
+        let initrd_path = src_path.join(&self.initrd);
+
+        if initrd_path.exists() {
+            safe_copy(src_path.join(&self.initrd), dest_path.join(&self.initrd))?;
+        }
 
         // copy Intel ucode if exists
         let ucode_path = src_path.join(UCODE);
@@ -161,7 +177,7 @@ impl Kernel {
 
         if ucode_path.exists() {
             println_with_prefix_and_fl!("install_ucode");
-            fs::copy(ucode_path, ucode_dest_path)?;
+            safe_copy(ucode_path, ucode_dest_path)?;
         } else {
             fs::remove_file(ucode_dest_path).ok();
         }
@@ -206,26 +222,35 @@ impl Kernel {
 
         let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
         let rel_dest_path = PathBuf::from(REL_DEST_PATH);
-        let file = fs::File::create(entry_path)?;
-        let mut writer = BufWriter::new(file);
+        let mut file = fs::File::create(&entry_path)?;
+        let mut buffer = vec![];
 
-        writeln!(writer, "title {} ({})", self.distro, self)?;
+        writeln!(buffer, "title {} ({})", self.distro, self)?;
         writeln!(
-            writer,
+            buffer,
             "linux /{}",
             rel_dest_path.join(&self.vmlinuz).display()
         )?;
         dest_path
             .join(UCODE)
             .exists()
-            .then(|| writeln!(writer, "initrd /{}{}", REL_DEST_PATH, UCODE))
+            .then(|| writeln!(buffer, "initrd /{}{}", REL_DEST_PATH, UCODE))
             .transpose()?;
         dest_path
             .join(&self.initrd)
             .exists()
-            .then(|| writeln!(writer, "initrd /{}{}", REL_DEST_PATH, self.initrd))
+            .then(|| writeln!(buffer, "initrd /{}{}", REL_DEST_PATH, self.initrd))
             .transpose()?;
-        writeln!(writer, "options {}", self.bootarg)?;
+        writeln!(buffer, "options {}", self.bootarg)?;
+
+        file.write_all(&buffer)?;
+
+        // Make sure the file is complete, otherwise possible ENOSPC (No space left on device)
+        if file.metadata()?.len() != buffer.len() as u64 {
+            // Remove incomplete file
+            fs::remove_file(&entry_path)?;
+            bail!(fl!("no_space"));
+        }
 
         Ok(())
     }
