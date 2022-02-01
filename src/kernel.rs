@@ -223,7 +223,7 @@ impl Kernel {
         let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
         let rel_dest_path = PathBuf::from(REL_DEST_PATH);
         let mut file = fs::File::create(&entry_path)?;
-        let mut buffer = vec![];
+        let mut buffer = Vec::new();
 
         writeln!(buffer, "title {} ({})", self.distro, self)?;
         writeln!(
