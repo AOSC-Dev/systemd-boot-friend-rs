@@ -2,8 +2,8 @@ use anyhow::{anyhow, Result};
 use nom::{
     bytes::complete::{tag, take_until},
     character::complete::digit1,
-    combinator::{map, map_res, opt},
-    sequence::{pair, preceded, tuple},
+    combinator::{map_res, opt},
+    sequence::{preceded, tuple},
     IResult,
 };
 use std::fmt;
@@ -15,7 +15,7 @@ pub struct Version {
     pub major: u64,
     pub minor: u64,
     pub patch: u64,
-    pub rc: Option<String>,
+    pub rc: Option<u64>,
     pub rel: Option<u64>,
     pub localversion: String,
 }
@@ -47,10 +47,8 @@ fn digit_after_dot(input: &str) -> IResult<&str, u64> {
     preceded(tag("."), version_digit)(input)
 }
 
-fn rc(input: &str) -> IResult<&str, String> {
-    map(preceded(tag("-"), pair(tag("rc"), digit1)), |(x, y)| {
-        format!("{}{}", x, y)
-    })(input)
+fn rc(input: &str) -> IResult<&str, u64> {
+    preceded(tag("-rc"), version_digit)(input)
 }
 
 fn rel(input: &str) -> IResult<&str, u64> {
@@ -96,7 +94,7 @@ mod tests {
                 major: 5,
                 minor: 12,
                 patch: 0,
-                rc: Some("rc3".to_owned()),
+                rc: Some(3),
                 rel: None,
                 localversion: "-aosc-main".to_owned(),
             }
