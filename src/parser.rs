@@ -57,34 +57,31 @@ fn rel(input: &str) -> IResult<&str, u64> {
     map_res(preceded(tag("-"), take_until("-")), |x: &str| x.parse())(input)
 }
 
-fn version(input: &str) -> IResult<&str, Version> {
-    tuple((
-        version_digit,        // Major
-        digit_after_dot,      // Minor
-        opt(digit_after_dot), // Optional Patch
-        opt(rc),              // Optional RC
-        opt(rel),             // Optional Rel
-    ))(input)
-    .map(|(next, res)| {
-        let (major, minor, patch, rc, rel) = res;
-        let version = Version {
-            major,
-            minor,
-            patch: patch.unwrap_or_default(),
-            rc,
-            rel,
-            localversion: next.to_owned(),
-        };
-
-        (next, version)
-    })
-}
-
 impl Version {
     pub fn parse(input: &str) -> Result<Version> {
-        version(input)
-            .map(|(_, version)| version)
-            .map_err(|_| anyhow!(fl!("invalid_kernel_filename")))
+        tuple((
+            version_digit,        // Major
+            digit_after_dot,      // Minor
+            opt(digit_after_dot), // Optional Patch
+            opt(rc),              // Optional RC
+            opt(rel),             // Optional Rel
+        ))(input)
+        .map_or_else(
+            |_| Err(anyhow!(fl!("invalid_kernel_filename"))),
+            |(next, res)| {
+                let (major, minor, patch, rc, rel) = res;
+                let version = Version {
+                    major,
+                    minor,
+                    patch: patch.unwrap_or_default(),
+                    rc,
+                    rel,
+                    localversion: next.into(),
+                };
+
+                Ok(version)
+            },
+        )
     }
 }
 
@@ -94,68 +91,56 @@ mod tests {
     #[test]
     fn test_aosc_version() {
         assert_eq!(
-            version("5.12.0-rc3-aosc-main"),
-            Ok((
-                "-aosc-main",
-                Version {
-                    major: 5,
-                    minor: 12,
-                    patch: 0,
-                    rc: Some("rc3".to_owned()),
-                    rel: None,
-                    localversion: "-aosc-main".to_owned(),
-                }
-            ))
+            Version::parse("5.12.0-rc3-aosc-main").unwrap(),
+            Version {
+                major: 5,
+                minor: 12,
+                patch: 0,
+                rc: Some("rc3".to_owned()),
+                rel: None,
+                localversion: "-aosc-main".to_owned(),
+            }
         );
         assert_eq!(
-            version("5.12-aosc-main"),
-            Ok((
-                "-aosc-main",
-                Version {
-                    major: 5,
-                    minor: 12,
-                    patch: 0,
-                    rc: None,
-                    rel: None,
-                    localversion: "-aosc-main".to_owned(),
-                }
-            ))
+            Version::parse("5.12-aosc-main").unwrap(),
+            Version {
+                major: 5,
+                minor: 12,
+                patch: 0,
+                rc: None,
+                rel: None,
+                localversion: "-aosc-main".to_owned(),
+            }
         );
     }
 
     #[test]
     fn test_fedora_version() {
         assert_eq!(
-            version("5.15.12-100.fc34.x86_64"),
-            Ok((
-                "-100.fc34.x86_64",
-                Version {
-                    major: 5,
-                    minor: 15,
-                    patch: 12,
-                    rc: None,
-                    rel: None,
-                    localversion: "-100.fc34.x86_64".to_owned(),
-                }
-            ))
+            Version::parse("5.15.12-100.fc34.x86_64").unwrap(),
+            Version {
+                major: 5,
+                minor: 15,
+                patch: 12,
+                rc: None,
+                rel: None,
+                localversion: "-100.fc34.x86_64".to_owned(),
+            }
         );
     }
 
     #[test]
     fn test_debian_version() {
         assert_eq!(
-            version("5.10.0-11-amd64"),
-            Ok((
-                "-amd64",
-                Version {
-                    major: 5,
-                    minor: 10,
-                    patch: 0,
-                    rc: None,
-                    rel: Some(11),
-                    localversion: "-amd64".to_owned(),
-                }
-            ))
+            Version::parse("5.10.0-11-amd64").unwrap(),
+            Version {
+                major: 5,
+                minor: 10,
+                patch: 0,
+                rc: None,
+                rel: Some(11),
+                localversion: "-amd64".to_owned(),
+            }
         );
     }
 }
