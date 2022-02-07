@@ -49,7 +49,7 @@ impl Default for Config {
 }
 
 /// Choose a kernel using dialoguer
-fn choose_kernel<K: Kernel>(kernels: &[K], prompt: String) -> Result<Vec<K>> {
+fn choose_kernel<K: Kernel>(kernels: &[K], prompt: &str) -> Result<Vec<K>> {
     if kernels.is_empty() {
         bail!(fl!("empty_list"));
     }
@@ -82,9 +82,9 @@ fn parse_num_or_filename(
 #[inline]
 fn specify_or_choose(
     config: &Config,
-    arg: Option<String>,
+    arg: &Option<String>,
     kernels: &[GenericKernel],
-    prompt: String,
+    prompt: &str,
 ) -> Result<Vec<GenericKernel>> {
     match arg {
         // the target can be both the number in
@@ -217,16 +217,15 @@ fn main() -> Result<()> {
             SubCommands::Init => init(&config, &installed_kernels, &kernels)?,
             SubCommands::Update => update(&installed_kernels, &kernels)?,
             SubCommands::InstallKernel(args) => {
-                let force = args.force;
-                specify_or_choose(&config, args.target, &kernels, fl!("select_install"))?
+                specify_or_choose(&config, &args.target, &kernels, &fl!("select_install"))?
                     .iter()
-                    .try_for_each(|k| install(k, force))?
+                    .try_for_each(|k| install(k, args.force))?
             }
             SubCommands::RemoveKernel(args) => specify_or_choose(
                 &config,
-                args.target,
+                &args.target,
                 &installed_kernels,
-                fl!("select_remove"),
+                &fl!("select_remove"),
             )?
             .iter()
             .try_for_each(|k| k.remove())?,
