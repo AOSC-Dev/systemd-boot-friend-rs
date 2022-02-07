@@ -4,17 +4,16 @@ use regex::Regex;
 use std::{cmp::Ordering, fmt, fs, io::prelude::*, path::PathBuf};
 use systemd_boot_conf::SystemdBootConf;
 
-use super::{safe_copy, Kernel};
+use super::{safe_copy, Kernel, REL_ENTRY_PATH};
 use crate::{
     fl, print_block_with_fl, println_with_prefix, println_with_prefix_and_fl,
     version::{generic_version::GenericVersion, Version},
     Config, REL_DEST_PATH,
 };
 
+const MODULES_PATH: &str = "/usr/lib/modules/";
 const SRC_PATH: &str = "/boot/";
 const UCODE: &str = "intel-ucode.img";
-const MODULES_PATH: &str = "/usr/lib/modules/";
-const REL_ENTRY_PATH: &str = "loader/entries/";
 
 /// A kernel struct for parsing kernel filenames
 #[derive(Debug, Eq, PartialEq, Clone)]

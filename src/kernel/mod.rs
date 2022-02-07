@@ -3,6 +3,8 @@ use std::{fmt::Display, fs, path::Path};
 
 use crate::fl;
 
+const REL_ENTRY_PATH: &str = "loader/entries/";
+
 pub trait Kernel: Display + Clone {
     fn install(&self) -> Result<()>;
     fn remove(&self) -> Result<()>;
