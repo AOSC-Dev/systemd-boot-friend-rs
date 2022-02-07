@@ -21,6 +21,7 @@ mod version;
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
+const SRC_PATH: &str = "/boot";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -107,7 +108,7 @@ fn init<K: Kernel>(config: &Config, installed_kernels: &[K], kernels: &[K]) -> R
         .default(false)
         .interact()?
     {
-        Command::new("bootctl")
+        let child_output = Command::new("bootctl")
             .arg("install")
             .arg(
                 "--esp=".to_owned()
@@ -116,16 +117,20 @@ fn init<K: Kernel>(config: &Config, installed_kernels: &[K], kernels: &[K]) -> R
                         .to_str()
                         .ok_or_else(|| anyhow!(fl!("invalid_esp")))?,
             )
-            .stderr(Stdio::null())
+            .stderr(Stdio::piped())
             .spawn()?
-            .wait()?;
+            .wait_with_output()?;
+
+        if !child_output.status.success() {
+            bail!(String::from_utf8(child_output.stderr)?);
+        }
 
         // create folder structure
         println_with_prefix_and_fl!("create_folder");
         fs::create_dir_all(config.esp_mountpoint.join(REL_DEST_PATH))?;
 
         // Update systemd-boot kernels and entries
-        print_block_with_fl!("prompt_update");
+        print_block_with_fl!("prompt_update", src_path = SRC_PATH);
         Confirm::new()
             .with_prompt(fl!("ask_update"))
             .default(false)
@@ -198,7 +203,7 @@ fn read_config() -> Result<Config> {
             println_with_prefix_and_fl!("conf_default", conf_path = CONF_PATH);
             fs::create_dir_all(PathBuf::from(CONF_PATH).parent().unwrap())?;
             fs::write(CONF_PATH, toml::to_string_pretty(&Config::default())?)?;
-            bail!(fl!("edit_conf", conf_path = CONF_PATH))
+            Err(anyhow!(fl!("edit_conf", conf_path = CONF_PATH)))
         }
     }
 }
