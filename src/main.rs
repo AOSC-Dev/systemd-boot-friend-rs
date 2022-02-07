@@ -117,7 +117,8 @@ fn init<K: Kernel>(config: &Config, installed_kernels: &[K], kernels: &[K]) -> R
                         .ok_or_else(|| anyhow!(fl!("invalid_esp")))?,
             )
             .stderr(Stdio::null())
-            .spawn()?;
+            .spawn()?
+            .wait()?;
 
         // create folder structure
         println_with_prefix_and_fl!("create_folder");
