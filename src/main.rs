@@ -11,13 +11,13 @@ use std::{
 };
 
 use i18n::I18N_LOADER;
-use kernel::Kernel;
+use kernel::{generic_kernel::GenericKernel, Kernel};
 
 mod cli;
 mod i18n;
 mod kernel;
 mod macros;
-mod parser;
+mod version;
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
@@ -49,7 +49,7 @@ impl Default for Config {
 }
 
 /// Choose a kernel using dialoguer
-fn choose_kernel(kernels: &[Kernel], prompt: String) -> Result<Vec<Kernel>> {
+fn choose_kernel<K: Kernel>(kernels: &[K], prompt: String) -> Result<Vec<K>> {
     if kernels.is_empty() {
         bail!(fl!("empty_list"));
     }
@@ -65,13 +65,17 @@ fn choose_kernel(kernels: &[Kernel], prompt: String) -> Result<Vec<Kernel>> {
 }
 
 #[inline]
-fn parse_num_or_filename(config: &Config, n: &str, kernels: &[Kernel]) -> Result<Kernel> {
+fn parse_num_or_filename(
+    config: &Config,
+    n: &str,
+    kernels: &[GenericKernel],
+) -> Result<GenericKernel> {
     match n.parse::<usize>() {
         Ok(num) => Ok(kernels
             .get(num - 1)
             .ok_or_else(|| anyhow!(fl!("invalid_index")))?
             .clone()),
-        Err(_) => Kernel::parse(config, n),
+        Err(_) => GenericKernel::parse(config, n),
     }
 }
 
@@ -79,9 +83,9 @@ fn parse_num_or_filename(config: &Config, n: &str, kernels: &[Kernel]) -> Result
 fn specify_or_choose(
     config: &Config,
     arg: Option<String>,
-    kernels: &[Kernel],
+    kernels: &[GenericKernel],
     prompt: String,
-) -> Result<Vec<Kernel>> {
+) -> Result<Vec<GenericKernel>> {
     match arg {
         // the target can be both the number in
         // the list and the name of the kernel
@@ -93,7 +97,7 @@ fn specify_or_choose(
 }
 
 /// Initialize the default environment for friend
-fn init(config: &Config, installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
+fn init<K: Kernel>(config: &Config, installed_kernels: &[K], kernels: &[K]) -> Result<()> {
     // use bootctl to install systemd-boot
     println_with_prefix_and_fl!("init");
     print_block_with_fl!("prompt_init");
@@ -133,7 +137,7 @@ fn init(config: &Config, installed_kernels: &[Kernel], kernels: &[Kernel]) -> Re
 }
 
 /// Update systemd-boot kernels and entries
-fn update(installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
+fn update<K: Kernel>(installed_kernels: &[K], kernels: &[K]) -> Result<()> {
     println_with_prefix_and_fl!("update");
     print_block_with_fl!("note_copy_files");
 
@@ -154,7 +158,7 @@ fn update(installed_kernels: &[Kernel], kernels: &[Kernel]) -> Result<()> {
 }
 
 #[inline]
-fn install(kernel: &Kernel, force: bool) -> Result<()> {
+fn install<K: Kernel>(kernel: &K, force: bool) -> Result<()> {
     print_block_with_fl!("note_copy_files");
 
     kernel.install_and_make_config(force)?;
@@ -164,7 +168,7 @@ fn install(kernel: &Kernel, force: bool) -> Result<()> {
 }
 
 #[inline]
-fn print_kernels(kernels: &[Kernel]) {
+fn print_kernels<K: Kernel>(kernels: &[K]) {
     kernels
         .iter()
         .enumerate()
@@ -204,8 +208,8 @@ fn main() -> Result<()> {
 
     // Read config, create a default one if the file is missing
     let config = read_config()?;
-    let installed_kernels = Kernel::list_installed(&config)?;
-    let kernels = Kernel::list(&config)?;
+    let installed_kernels = GenericKernel::list_installed(&config)?;
+    let kernels = GenericKernel::list(&config)?;
 
     // Switch table
     match matches.subcommands {

@@ -8,10 +8,11 @@ use nom::{
 };
 use std::fmt;
 
+use super::Version;
 use crate::fl;
 
 #[derive(Debug, Default, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub struct Version {
+pub struct GenericVersion {
     pub major: u64,
     pub minor: u64,
     pub patch: u64,
@@ -20,7 +21,7 @@ pub struct Version {
     pub localversion: String,
 }
 
-impl fmt::Display for Version {
+impl fmt::Display for GenericVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -55,8 +56,8 @@ fn rel(input: &str) -> IResult<&str, u64> {
     map_res(preceded(tag("-"), take_until("-")), |x: &str| x.parse())(input)
 }
 
-impl Version {
-    pub fn parse(input: &str) -> Result<Version> {
+impl Version<GenericVersion> for GenericVersion {
+    fn parse(input: &str) -> Result<Self> {
         tuple((
             version_digit,        // Major
             digit_after_dot,      // Minor
@@ -68,7 +69,7 @@ impl Version {
             |_| Err(anyhow!(fl!("invalid_kernel_filename"))),
             |(next, res)| {
                 let (major, minor, patch, rc, rel) = res;
-                let version = Version {
+                let version = GenericVersion {
                     major,
                     minor,
                     patch: patch.unwrap_or_default(),
@@ -89,8 +90,8 @@ mod tests {
     #[test]
     fn test_aosc_version() {
         assert_eq!(
-            Version::parse("5.12.0-rc3-aosc-main").unwrap(),
-            Version {
+            GenericVersion::parse("5.12.0-rc3-aosc-main").unwrap(),
+            GenericVersion {
                 major: 5,
                 minor: 12,
                 patch: 0,
@@ -100,8 +101,8 @@ mod tests {
             }
         );
         assert_eq!(
-            Version::parse("5.12-aosc-main").unwrap(),
-            Version {
+            GenericVersion::parse("5.12-aosc-main").unwrap(),
+            GenericVersion {
                 major: 5,
                 minor: 12,
                 patch: 0,
@@ -115,8 +116,8 @@ mod tests {
     #[test]
     fn test_fedora_version() {
         assert_eq!(
-            Version::parse("5.15.12-100.fc34.x86_64").unwrap(),
-            Version {
+            GenericVersion::parse("5.15.12-100.fc34.x86_64").unwrap(),
+            GenericVersion {
                 major: 5,
                 minor: 15,
                 patch: 12,
@@ -130,8 +131,8 @@ mod tests {
     #[test]
     fn test_debian_version() {
         assert_eq!(
-            Version::parse("5.10.0-11-amd64").unwrap(),
-            Version {
+            GenericVersion::parse("5.10.0-11-amd64").unwrap(),
+            GenericVersion {
                 major: 5,
                 minor: 10,
                 patch: 0,
