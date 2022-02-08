@@ -90,7 +90,7 @@ fn specify_or_choose(
     match arg {
         // the target can be both the number in
         // the list and the name of the kernel
-        Some(n) => Ok(vec![parse_num_or_filename(config, &n, kernels)?]),
+        Some(n) => Ok(vec![parse_num_or_filename(config, n, kernels)?]),
         // select the kernel to remove
         // when no target is given
         None => choose_kernel(kernels, prompt),
