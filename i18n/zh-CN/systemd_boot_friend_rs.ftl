@@ -37,7 +37,7 @@ prompt_init =
 ask_init = 是否要安装并初始化 systemd-boot-friend？
 update = 正在更新启动项 ...
 prompt_update =
-    systemd-boot 已成功初始化。是否要让 systemd-boot-friend 搜索 /boot 中的内核
+    systemd-boot 已成功初始化。是否要让 systemd-boot-friend 搜索 {$src_path} 中的内核
     并将其登记至 systemd-boot 配置中？若不需要，您可以随时执行
     `systemd-boot-friend update` 进行该操作。
 ask_update = 是否要安装所有内核并登记启动项？

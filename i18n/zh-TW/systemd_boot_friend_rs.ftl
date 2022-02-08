@@ -37,7 +37,7 @@ prompt_init =
 ask_init = 是否要安裝並初始化 systemd-boot？
 update = 正在更新開機選項 ...
 prompt_update =
-    systemd-boot 已成功初始化。是否要讓 systemd-boot-friend 搜尋 /boot 中的核心
+    systemd-boot 已成功初始化。是否要讓 systemd-boot-friend 搜尋 {$src_path} 中的核心
     並將其登記至 systemd-boot 設定檔中？若不需要，您隨時可以執行
     `systemd-boot-friend update` 進行該操作。
 ask_update = 是否要安裝所有核心並登記開機選項？

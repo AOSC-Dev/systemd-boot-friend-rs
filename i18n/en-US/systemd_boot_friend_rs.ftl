@@ -40,7 +40,7 @@ ask_init = Proceed with installing and initializing systemd-boot?
 update = Updating boot entries ...
 prompt_update =
     Successfully initialized systemd-boot. Would you like systemd-boot-friend to
-    search your /boot directory for kernels and register them in systemd-boot
+    search your {$src_path} directory for kernels and register them in systemd-boot
     configuration? If not, you could always do so by running
     `systemd-boot-friend update`.
 ask_update = Proceed with searching and creating boot entries?
