@@ -1,6 +1,5 @@
 use clap::{AppSettings, Parser};
 
-/// Kernel Version Manager for systemd-boot
 #[derive(Parser, Debug)]
 #[clap(about, author, version, setting = AppSettings::ArgRequiredElseHelp)]
 pub struct Opts {
