@@ -32,7 +32,7 @@ pub enum SubCommands {
 #[derive(Parser, Debug)]
 pub struct Install {
     pub target: Option<String>,
-    /// force overwrite the entry config or not
+    /// Force overwrite the entry config or not
     #[clap(long, short)]
     pub force: bool,
 }
