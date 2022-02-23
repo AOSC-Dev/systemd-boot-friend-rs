@@ -42,8 +42,8 @@ _arguments "${_arguments_options[@]}" \
 ;;
 (install-kernel)
 _arguments "${_arguments_options[@]}" \
-'-f[force overwrite the entry config or not]' \
-'--force[force overwrite the entry config or not]' \
+'-f[Force overwrite the entry config or not]' \
+'--force[Force overwrite the entry config or not]' \
 '-h[Print help information]' \
 '--help[Print help information]' \
 '::target:' \

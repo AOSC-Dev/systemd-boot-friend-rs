@@ -9,7 +9,7 @@ complete -c systemd-boot-friend -n "__fish_use_subcommand" -f -a "list-installed
 complete -c systemd-boot-friend -n "__fish_use_subcommand" -f -a "help" -d 'Print this message or the help of the given subcommand(s)'
 complete -c systemd-boot-friend -n "__fish_seen_subcommand_from init" -s h -l help -d 'Print help information'
 complete -c systemd-boot-friend -n "__fish_seen_subcommand_from update" -s h -l help -d 'Print help information'
-complete -c systemd-boot-friend -n "__fish_seen_subcommand_from install-kernel" -s f -l force -d 'force overwrite the entry config or not'
+complete -c systemd-boot-friend -n "__fish_seen_subcommand_from install-kernel" -s f -l force -d 'Force overwrite the entry config or not'
 complete -c systemd-boot-friend -n "__fish_seen_subcommand_from install-kernel" -s h -l help -d 'Print help information'
 complete -c systemd-boot-friend -n "__fish_seen_subcommand_from remove-kernel" -s h -l help -d 'Print help information'
 complete -c systemd-boot-friend -n "__fish_seen_subcommand_from list-available" -s h -l help -d 'Print help information'

@@ -10,7 +10,7 @@ const GENERATED_COMPLETIONS: &[Shell] = &[Shell::Bash, Shell::Zsh, Shell::Fish];
 
 fn generate_completions() -> Result<()> {
     fs::create_dir_all(ROOT)?;
-    let mut app = Opts::into_app();
+    let mut app = Opts::command();
     for shell in GENERATED_COMPLETIONS {
         generate_to(*shell, &mut app, APP, ROOT)?;
     }

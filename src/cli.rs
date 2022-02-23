@@ -1,7 +1,7 @@
-use clap::{AppSettings, Parser};
+use clap::{Parser};
 
 #[derive(Parser, Debug)]
-#[clap(about, author, version, setting = AppSettings::ArgRequiredElseHelp)]
+#[clap(about, author, version, arg_required_else_help(true))]
 pub struct Opts {
     #[clap(subcommand)]
     pub subcommands: Option<SubCommands>,
