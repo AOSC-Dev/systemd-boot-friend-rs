@@ -91,14 +91,14 @@ impl Kernel for GenericKernel {
         let kernel_path = self.esp_mountpoint.join(REL_DEST_PATH);
 
         println_with_prefix_and_fl!("remove_kernel", kernel = self.to_string());
-        fs::remove_file(kernel_path.join(&self.vmlinuz))?;
+        fs::remove_file(kernel_path.join(&self.vmlinuz)).ok();
         fs::remove_file(kernel_path.join(&self.initrd)).ok();
 
         println_with_prefix_and_fl!("remove_entry", kernel = self.to_string());
         fs::remove_file(
             self.esp_mountpoint
                 .join(format!("loader/entries/{}", self.entry)),
-        )?;
+        ).ok();
 
         self.remove_default()?;
 
