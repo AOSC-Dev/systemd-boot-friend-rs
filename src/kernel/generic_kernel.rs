@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use dialoguer::Confirm;
 use regex::Regex;
 use std::{cmp::Ordering, fmt, fs, io::prelude::*, path::PathBuf};
-use systemd_boot_conf::SystemdBootConf;
+use libsdbootconf::{SystemdBootConf, entry::{Token, EntryBuilder}};
 
 use super::{safe_copy, Kernel, REL_ENTRY_PATH};
 use crate::{
@@ -152,31 +152,52 @@ impl Kernel for GenericKernel {
 
         let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
         let rel_dest_path = PathBuf::from(REL_DEST_PATH);
-        let mut file = fs::File::create(&entry_path)?;
-        let mut buffer = Vec::new();
 
-        writeln!(buffer, "title {} ({})", self.distro, self)?;
-        writeln!(
-            buffer,
-            "linux /{}",
-            rel_dest_path.join(&self.vmlinuz).display()
-        )?;
+        // let mut file = fs::File::create(&entry_path)?;
+        // let mut buffer = Vec::new();
+        //
+        // writeln!(buffer, "title {} ({})", self.distro, self)?;
+        // writeln!(
+        //     buffer,
+        //     "linux /{}",
+        //     rel_dest_path.join(&self.vmlinuz).display()
+        // )?;
+        // dest_path
+        //     .join(UCODE)
+        //     .exists()
+        //     .then(|| writeln!(buffer, "initrd /{}{}", REL_DEST_PATH, UCODE))
+        //     .transpose()?;
+        // dest_path
+        //     .join(&self.initrd)
+        //     .exists()
+        //     .then(|| writeln!(buffer, "initrd /{}{}", REL_DEST_PATH, self.initrd))
+        //     .transpose()?;
+        // writeln!(buffer, "options {}", self.bootarg)?;
+        //
+        // file.write_all(&buffer)?;
+
+        let mut entry = EntryBuilder::new(&self.entry)
+            .title(format!("{} ({})", self.distro, self))
+            .linux(rel_dest_path.join(&self.vmlinuz))
+            .build();
+
         dest_path
             .join(UCODE)
             .exists()
-            .then(|| writeln!(buffer, "initrd /{}{}", REL_DEST_PATH, UCODE))
-            .transpose()?;
+            .then(|| entry.tokens.push(Token::Initrd(rel_dest_path.join(UCODE))));
         dest_path
             .join(&self.initrd)
             .exists()
-            .then(|| writeln!(buffer, "initrd /{}{}", REL_DEST_PATH, self.initrd))
-            .transpose()?;
-        writeln!(buffer, "options {}", self.bootarg)?;
+            .then(|| entry.tokens.push(Token::Initrd(rel_dest_path.join(&self.initrd))));
+        entry.tokens.push(Token::Options(self.bootarg.to_owned()));
 
-        file.write_all(&buffer)?;
+        let mut file = fs::File::create(&entry_path)?;
+        let buffer = entry.to_string();
+
+        file.write_all(buffer.as_bytes())?;
 
         // Make sure the file is complete, otherwise possible ENOSPC (No space left on device)
-        if file.metadata()?.len() != buffer.len() as u64 {
+        if file.metadata()?.len() != buffer.as_bytes().len() as u64 {
             // Remove incomplete file
             fs::remove_file(&entry_path)?;
             bail!(fl!("no_space"));
@@ -189,22 +210,22 @@ impl Kernel for GenericKernel {
     fn set_default(&self) -> Result<()> {
         println_with_prefix_and_fl!("set_default", kernel = self.to_string());
 
-        let mut conf = SystemdBootConf::new(&self.esp_mountpoint)?;
+        let mut conf = SystemdBootConf::load(&self.esp_mountpoint.join("loader/"))?;
 
-        conf.loader_conf.default = Some(Box::from(self.entry.as_str()));
-        conf.overwrite_loader_conf()?;
+        conf.config.default = Some(self.entry.clone());
+        conf.write_all()?;
 
         Ok(())
     }
 
     // Remove default entry
     fn remove_default(&self) -> Result<()> {
-        let mut conf = SystemdBootConf::new(&self.esp_mountpoint)?;
+        let mut conf = SystemdBootConf::new(&self.esp_mountpoint.join("loader/"));
 
-        if conf.loader_conf.default == Some(Box::from(self.entry.as_str())) {
+        if conf.config.default == Some(self.entry.clone()) {
             println_with_prefix_and_fl!("remove_default", kernel = self.to_string());
-            conf.loader_conf.default = None;
-            conf.overwrite_loader_conf()?;
+            conf.config.default = None;
+            conf.write_all()?;
         }
 
         Ok(())
