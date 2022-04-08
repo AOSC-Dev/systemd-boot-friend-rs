@@ -1,8 +1,11 @@
 use anyhow::{anyhow, bail, Result};
 use dialoguer::Confirm;
+use libsdbootconf::{
+    entry::{EntryBuilder, Token},
+    SystemdBootConf,
+};
 use regex::Regex;
-use std::{cmp::Ordering, fmt, fs, io::prelude::*, path::PathBuf};
-use libsdbootconf::{SystemdBootConf, entry::{Token, EntryBuilder}};
+use std::{cmp::Ordering, fmt, fs, io::prelude::*, path::PathBuf, rc::Rc};
 
 use super::{safe_copy, Kernel, REL_ENTRY_PATH};
 use crate::{
@@ -185,10 +188,11 @@ impl Kernel for GenericKernel {
             .join(UCODE)
             .exists()
             .then(|| entry.tokens.push(Token::Initrd(rel_dest_path.join(UCODE))));
-        dest_path
-            .join(&self.initrd)
-            .exists()
-            .then(|| entry.tokens.push(Token::Initrd(rel_dest_path.join(&self.initrd))));
+        dest_path.join(&self.initrd).exists().then(|| {
+            entry
+                .tokens
+                .push(Token::Initrd(rel_dest_path.join(&self.initrd)))
+        });
         entry.tokens.push(Token::Options(self.bootarg.to_owned()));
 
         let mut file = fs::File::create(&entry_path)?;
@@ -212,7 +216,7 @@ impl Kernel for GenericKernel {
 
         let mut conf = SystemdBootConf::load(&self.esp_mountpoint.join("loader/"))?;
 
-        conf.config.default = Some(self.entry.clone());
+        conf.config.default = Some(self.entry.to_owned());
         conf.write_all()?;
 
         Ok(())
@@ -222,7 +226,7 @@ impl Kernel for GenericKernel {
     fn remove_default(&self) -> Result<()> {
         let mut conf = SystemdBootConf::new(&self.esp_mountpoint.join("loader/"));
 
-        if conf.config.default == Some(self.entry.clone()) {
+        if conf.config.default.as_ref() == Some(&self.entry) {
             println_with_prefix_and_fl!("remove_default", kernel = self.to_string());
             conf.config.default = None;
             conf.write_all()?;
@@ -272,7 +276,7 @@ impl GenericKernel {
     }
 
     /// Generate a sorted vector of kernel filenames
-    pub fn list(config: &Config) -> Result<Vec<Self>> {
+    pub fn list(config: &Config) -> Result<Vec<Rc<Self>>> {
         // read /usr/lib/modules to get kernel filenames
         let mut kernels = Vec::new();
 
@@ -285,7 +289,7 @@ impl GenericKernel {
                 && dirpath.join("modules.builtin").exists()
             {
                 match Self::parse(config, &dirname) {
-                    Ok(k) => kernels.push(k),
+                    Ok(k) => kernels.push(Rc::new(k)),
                     Err(_) => {
                         println_with_prefix_and_fl!("skip_unidentified_kernel", kernel = dirname);
                     }
@@ -303,7 +307,7 @@ impl GenericKernel {
     }
 
     /// Generate installed kernel list
-    pub fn list_installed(config: &Config) -> Result<Vec<Self>> {
+    pub fn list_installed(config: &Config) -> Result<Vec<Rc<Self>>> {
         let mut installed_kernels = Vec::new();
 
         // Construct regex for the template
@@ -323,7 +327,7 @@ impl GenericKernel {
                         .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
                         .as_str();
 
-                    installed_kernels.push(Self::parse(config, version)?);
+                    installed_kernels.push(Rc::new(Self::parse(config, version)?));
                 }
             }
         }

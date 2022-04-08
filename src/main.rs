@@ -8,6 +8,7 @@ use std::{
     fs,
     path::PathBuf,
     process::{Command, Stdio},
+    rc::Rc,
 };
 
 use i18n::I18N_LOADER;
@@ -50,7 +51,7 @@ impl Default for Config {
 }
 
 /// Choose a kernel using dialoguer
-fn choose_kernel<K: Kernel>(kernels: &[K], prompt: &str) -> Result<Vec<K>> {
+fn choose_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Vec<Rc<K>>> {
     if kernels.is_empty() {
         bail!(fl!("empty_list"));
     }
@@ -69,14 +70,14 @@ fn choose_kernel<K: Kernel>(kernels: &[K], prompt: &str) -> Result<Vec<K>> {
 fn parse_num_or_filename(
     config: &Config,
     n: &str,
-    kernels: &[GenericKernel],
-) -> Result<GenericKernel> {
+    kernels: &[Rc<GenericKernel>],
+) -> Result<Rc<GenericKernel>> {
     match n.parse::<usize>() {
         Ok(num) => Ok(kernels
             .get(num - 1)
             .ok_or_else(|| anyhow!(fl!("invalid_index")))?
             .clone()),
-        Err(_) => GenericKernel::parse(config, n),
+        Err(_) => Ok(Rc::new(GenericKernel::parse(config, n)?)),
     }
 }
 
@@ -84,9 +85,9 @@ fn parse_num_or_filename(
 fn specify_or_choose(
     config: &Config,
     arg: &Option<String>,
-    kernels: &[GenericKernel],
+    kernels: &[Rc<GenericKernel>],
     prompt: &str,
-) -> Result<Vec<GenericKernel>> {
+) -> Result<Vec<Rc<GenericKernel>>> {
     match arg {
         // the target can be both the number in
         // the list and the name of the kernel
@@ -98,7 +99,7 @@ fn specify_or_choose(
 }
 
 /// Initialize the default environment for friend
-fn init<K: Kernel>(config: &Config, installed_kernels: &[K], kernels: &[K]) -> Result<()> {
+fn init<K: Kernel>(config: &Config, installed_kernels: &[Rc<K>], kernels: &[Rc<K>]) -> Result<()> {
     // use bootctl to install systemd-boot
     println_with_prefix_and_fl!("init");
     print_block_with_fl!("prompt_init");
@@ -143,7 +144,7 @@ fn init<K: Kernel>(config: &Config, installed_kernels: &[K], kernels: &[K]) -> R
 }
 
 /// Update systemd-boot kernels and entries
-fn update<K: Kernel>(installed_kernels: &[K], kernels: &[K]) -> Result<()> {
+fn update<K: Kernel>(installed_kernels: &[Rc<K>], kernels: &[Rc<K>]) -> Result<()> {
     println_with_prefix_and_fl!("update");
     print_block_with_fl!("note_copy_files");
 
@@ -164,7 +165,7 @@ fn update<K: Kernel>(installed_kernels: &[K], kernels: &[K]) -> Result<()> {
 }
 
 #[inline]
-fn install<K: Kernel>(kernel: &K, force: bool) -> Result<()> {
+fn install<K: Kernel>(kernel: Rc<K>, force: bool) -> Result<()> {
     print_block_with_fl!("note_copy_files");
 
     kernel.install_and_make_config(force)?;
@@ -174,7 +175,7 @@ fn install<K: Kernel>(kernel: &K, force: bool) -> Result<()> {
 }
 
 #[inline]
-fn print_kernels<K: Kernel>(kernels: &[K]) {
+fn print_kernels<K: Kernel>(kernels: &[Rc<K>]) {
     kernels
         .iter()
         .enumerate()
@@ -225,7 +226,7 @@ fn main() -> Result<()> {
             SubCommands::InstallKernel(args) => {
                 specify_or_choose(&config, &args.target, &kernels, &fl!("select_install"))?
                     .iter()
-                    .try_for_each(|k| install(k, args.force))?
+                    .try_for_each(|k| install(k.clone(), args.force))?
             }
             SubCommands::RemoveKernel(args) => specify_or_choose(
                 &config,
