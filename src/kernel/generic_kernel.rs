@@ -224,7 +224,7 @@ impl Kernel for GenericKernel {
 
     // Remove default entry
     fn remove_default(&self) -> Result<()> {
-        let mut conf = SystemdBootConf::new(&self.esp_mountpoint.join("loader/"));
+        let mut conf = SystemdBootConf::load(&self.esp_mountpoint.join("loader/"))?;
 
         if conf.config.default.as_ref() == Some(&self.entry) {
             println_with_prefix_and_fl!("remove_default", kernel = self.to_string());
