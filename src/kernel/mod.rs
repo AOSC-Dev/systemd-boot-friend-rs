@@ -5,7 +5,7 @@ use crate::fl;
 
 const REL_ENTRY_PATH: &str = "loader/entries/";
 
-pub trait Kernel: Display + Clone {
+pub trait Kernel: Display + Clone + PartialEq {
     fn install(&self) -> Result<()>;
     fn remove(&self) -> Result<()>;
     fn make_config(&self, force_write: bool) -> Result<()>;

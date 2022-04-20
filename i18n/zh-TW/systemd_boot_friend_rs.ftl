@@ -31,13 +31,22 @@ select_install = 請選擇要登記開機選項的核心
 select_remove = 請選擇要從開機選單移除的核心
 init = 正在安裝並初始化 systemd-boot ...
 prompt_init =
-    systemd-boot-friend 即將安裝及初始化 systemd-boot，並將其設定為預設 EFI 開機
-    選項。完成後，您依舊可以在 EFI 開機管理程式中存取其他已安裝的開機載入器，
-    如 GRUB 或 Windows 開機管理器
+    systemd-boot-friend 即將安裝及初始化 systemd-boot，並將其設定為預設 EFI 開機選項
+    。完成後，您依舊可以在 EFI 開機管理程式中存取其他已安裝的開機載入器，如 GRUB 或
+    Windows 開機管理器
 ask_init = 是否要安裝並初始化 systemd-boot？
 update = 正在更新開機選項 ...
 prompt_update =
-    systemd-boot 已成功初始化。是否要讓 systemd-boot-friend 搜尋 {$src_path} 中的核心
-    並將其登記至 systemd-boot 設定檔中？若不需要，您隨時可以執行
+    systemd-boot 已成功初始化。是否要讓 systemd-boot-friend 搜尋 {$src_path} 中的核
+    心並將其登記至 systemd-boot 設定檔中？若不需要，您隨時可以執行
     `systemd-boot-friend update` 進行該操作。
 ask_update = 是否要安裝所有核心並登記開機選項？
+prompt_empty_bootarg =
+    systemd-boot-friend 在您的設定檔中偵測到了空的 `BOOTARG=` 項目，這有可能導致系統
+    開機失敗。
+ask_empty_bootarg = 需要 systemd-boot-friend 幫助您生成開機引數嗎？
+prompt_current_bootarg = 偵測到了當前使用的開機引數（核心命令列）：
+ask_current_bootarg = 是否要以此作為 systemd-boot 預設開機引數？
+prompt_current_root = 偵測到了當前的根目錄分割區： {$root}
+ask_current_root = 是否要以此產生 systemd-boot 預設開機引數？（root={$root} rw）
+edit_bootarg = 請使用任意文字編輯器編輯 {$config} 中的 `BOOTARG=` 項目。

@@ -9,7 +9,8 @@ use std::{cmp::Ordering, fmt, fs, io::prelude::*, path::PathBuf, rc::Rc};
 
 use super::{safe_copy, Kernel, REL_ENTRY_PATH};
 use crate::{
-    fl, print_block_with_fl, println_with_prefix, println_with_prefix_and_fl,
+    colorful_theme_modded, fl, print_block_with_fl, println_with_prefix,
+    println_with_prefix_and_fl,
     version::{generic_version::GenericVersion, Version},
     Config, REL_DEST_PATH, SRC_PATH,
 };
@@ -21,7 +22,7 @@ const UCODE: &str = "intel-ucode.img";
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct GenericKernel {
     version: GenericVersion,
-    vmlinuz: String,
+    vmlinux: String,
     initrd: String,
     distro: String,
     esp_mountpoint: PathBuf,
@@ -67,7 +68,7 @@ impl Kernel for GenericKernel {
 
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
-        safe_copy(src_path.join(&self.vmlinuz), dest_path.join(&self.vmlinuz))?;
+        safe_copy(src_path.join(&self.vmlinux), dest_path.join(&self.vmlinux))?;
 
         let initrd_path = src_path.join(&self.initrd);
 
@@ -94,11 +95,11 @@ impl Kernel for GenericKernel {
         let kernel_path = self.esp_mountpoint.join(REL_DEST_PATH);
 
         println_with_prefix_and_fl!("remove_kernel", kernel = self.to_string());
-        let vmlinuz = kernel_path.join(&self.vmlinuz);
+        let vmlinux = kernel_path.join(&self.vmlinux);
         let initrd = kernel_path.join(&self.initrd);
 
-        fs::remove_file(&vmlinuz)
-            .map_err(|x| eprintln!("WARNING: {}: {}", &vmlinuz.display(), x))
+        fs::remove_file(&vmlinux)
+            .map_err(|x| eprintln!("WARNING: {}: {}", &vmlinux.display(), x))
             .ok();
         fs::remove_file(&initrd)
             .map_err(|x| eprintln!("WARNING: {}: {}", &initrd.display(), x))
@@ -135,7 +136,7 @@ impl Kernel for GenericKernel {
         let entry_path = entries_path.join(&self.entry);
 
         if entry_path.exists() && !force_write {
-            let overwrite = Confirm::new()
+            let overwrite = Confirm::with_theme(&colorful_theme_modded())
                 .with_prompt(fl!("ask_overwrite", entry = entry_path.to_string_lossy()))
                 .default(false)
                 .interact()?;
@@ -156,32 +157,9 @@ impl Kernel for GenericKernel {
         let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
         let rel_dest_path = PathBuf::from(REL_DEST_PATH);
 
-        // let mut file = fs::File::create(&entry_path)?;
-        // let mut buffer = Vec::new();
-        //
-        // writeln!(buffer, "title {} ({})", self.distro, self)?;
-        // writeln!(
-        //     buffer,
-        //     "linux /{}",
-        //     rel_dest_path.join(&self.vmlinuz).display()
-        // )?;
-        // dest_path
-        //     .join(UCODE)
-        //     .exists()
-        //     .then(|| writeln!(buffer, "initrd /{}{}", REL_DEST_PATH, UCODE))
-        //     .transpose()?;
-        // dest_path
-        //     .join(&self.initrd)
-        //     .exists()
-        //     .then(|| writeln!(buffer, "initrd /{}{}", REL_DEST_PATH, self.initrd))
-        //     .transpose()?;
-        // writeln!(buffer, "options {}", self.bootarg)?;
-        //
-        // file.write_all(&buffer)?;
-
         let mut entry = EntryBuilder::new(&self.entry)
             .title(format!("{} ({})", self.distro, self))
-            .linux(rel_dest_path.join(&self.vmlinuz))
+            .linux(rel_dest_path.join(&self.vmlinux))
             .build();
 
         dest_path
@@ -237,7 +215,7 @@ impl Kernel for GenericKernel {
 
     #[inline]
     fn ask_set_default(&self) -> Result<()> {
-        Confirm::new()
+        Confirm::with_theme(&colorful_theme_modded())
             .with_prompt(fl!("ask_set_default", kernel = self.to_string()))
             .default(false)
             .interact()?
@@ -260,13 +238,13 @@ impl GenericKernel {
     /// Parse a kernel filename
     pub fn parse(config: &Config, kernel_name: &str) -> Result<Self> {
         let version = GenericVersion::parse(kernel_name)?;
-        let vmlinuz = config.vmlinuz.replace("{VERSION}", kernel_name);
+        let vmlinux = config.vmlinux.replace("{VERSION}", kernel_name);
         let initrd = config.initrd.replace("{VERSION}", kernel_name);
         let entry = kernel_name.to_owned() + ".conf";
 
         Ok(Self {
             version,
-            vmlinuz,
+            vmlinux,
             initrd,
             distro: config.distro.to_owned(),
             esp_mountpoint: config.esp_mountpoint.to_owned(),
@@ -311,7 +289,7 @@ impl GenericKernel {
         let mut installed_kernels = Vec::new();
 
         // Construct regex for the template
-        let re = Regex::new(&config.vmlinuz.replace("{VERSION}", r"(?P<version>.+)"))?;
+        let re = Regex::new(&config.vmlinux.replace("{VERSION}", r"(?P<version>.+)"))?;
 
         // Regex match group
         if let Ok(d) = fs::read_dir(config.esp_mountpoint.join(REL_DEST_PATH)) {

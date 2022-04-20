@@ -44,3 +44,12 @@ prompt_update =
     configuration? If not, you could always do so by running
     `systemd-boot-friend update`.
 ask_update = Proceed with searching and creating boot entries?
+prompt_empty_bootarg =
+    systemd-boot-friend detected an empty `BOOTARG=` field in your configuration.
+    This may cause system boot failures.
+ask_empty_bootarg = Let systemd-boot-friend generate the boot arguments?
+prompt_current_bootarg = Detected current boot arguments (kernel command line):
+ask_current_bootarg = Use these as default systemd-boot boot arguments?
+prompt_current_root = Detected current root partition: {$root}
+ask_current_root = Use this for default systemd-boot boot arguments? (root={$root} rw)
+edit_bootarg = Please use your favorite text editor to edit `BOOTARG=` entry in {$config}.
