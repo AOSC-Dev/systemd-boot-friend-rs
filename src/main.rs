@@ -1,6 +1,5 @@
 use anyhow::{anyhow, bail, Result};
 use clap::Parser;
-use console::{style, Style};
 use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
 use libsdbootconf::SystemdBootConf;
@@ -26,18 +25,6 @@ use kernel::{generic_kernel::GenericKernel, Kernel};
 const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
 const SRC_PATH: &str = "/boot";
 
-/// Modified version of ColorfulTheme for Dialoguer
-#[allow(clippy::field_reassign_with_default)]
-fn colorful_theme_modded() -> ColorfulTheme {
-    let mut theme = ColorfulTheme::default();
-    theme.prompt_suffix = style("›".to_string()).for_stderr().white();
-    theme.success_suffix = style("·".to_string()).for_stderr().white();
-    theme.hint_style = Style::new().for_stderr().white();
-    theme.unchecked_item_prefix = style("✔".to_string()).for_stderr().black().bright();
-
-    theme
-}
-
 /// Choose a kernel using dialoguer
 fn choose_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Vec<Rc<K>>> {
     if kernels.is_empty() {
@@ -45,7 +32,7 @@ fn choose_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Vec<Rc<K>
     }
 
     // build dialoguer MultiSelect for kernel selection
-    Ok(MultiSelect::with_theme(&colorful_theme_modded())
+    Ok(MultiSelect::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
         .items(kernels)
         .interact()?
@@ -94,7 +81,7 @@ fn init(config: &Config) -> Result<()> {
     println_with_prefix_and_fl!("init");
     print_block_with_fl!("prompt_init");
 
-    if !Confirm::with_theme(&colorful_theme_modded())
+    if !Confirm::with_theme(&ColorfulTheme::default())
         .with_prompt(fl!("ask_init"))
         .default(false)
         .interact()?
@@ -140,7 +127,7 @@ fn init(config: &Config) -> Result<()> {
 
     // Update systemd-boot kernels and entries
     print_block_with_fl!("prompt_update", src_path = SRC_PATH);
-    Confirm::with_theme(&colorful_theme_modded())
+    Confirm::with_theme(&ColorfulTheme::default())
         .with_prompt(fl!("ask_update"))
         .default(false)
         .interact()?
