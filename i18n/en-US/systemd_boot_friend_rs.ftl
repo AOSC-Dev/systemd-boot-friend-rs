@@ -20,38 +20,39 @@ create_folder = Creating folder structure for friend ...
 note_copy_files = Note: systemd-boot-friend will copy Kernel file(s) to your EFI System Partition
 install = Installing kernel {$kernel} ...
 install_ucode = intel-ucode detected. Installing ...
-ask_overwrite = {$entry} already exists. Overwrite?
 no_overwrite = Doing nothing on this file.
 overwrite = Overwriting {$entry} ...
 create_entry = Creating boot entry {$kernel} ...
 remove_kernel = Removing kernel {$kernel} ...
 remove_entry = Removing boot entry {$kernel} ...
 set_default = Setting {$kernel} as default boot entry ...
-ask_set_default = Would you like to set {$kernel} as default boot entry?
 remove_default = Removing default boot entry {$kernel} ...
-select_install = Please select the kernel(s) you would like to register as boot entry(s)
-select_remove = Please select the kernel(s) you would like to remove from the boot menu
-select_default = Please select an installed kernel you would like to set as default boot entry
 init = Installing and initializing systemd-boot ...
 prompt_init =
     systemd-boot-friend will now install and initialize systemd-boot, which will
     become the default EFI boot option on your system. If you already have GRUB or
     other bootloaders (such as Windows Boot Manager) installed, they will remain
     accessible from your EFI Boot Manager.
-ask_init = Proceed with installing and initializing systemd-boot?
 update = Updating boot entries ...
 prompt_update =
     Successfully initialized systemd-boot. Would you like systemd-boot-friend to
     search your {$src_path} directory for kernels and register them in systemd-boot
     configuration? If not, you could always do so by running
     `systemd-boot-friend update`.
-ask_update = Proceed with searching and creating boot entries?
 prompt_empty_bootarg =
     systemd-boot-friend detected an empty `BOOTARG=` field in your configuration.
     This may cause system boot failures.
-ask_empty_bootarg = Let systemd-boot-friend generate the boot arguments?
 prompt_current_bootarg = Detected current boot arguments (kernel command line):
-ask_current_bootarg = Use these as default systemd-boot boot arguments?
 prompt_current_root = Detected current root partition: {$root}
-ask_current_root = Use this for default systemd-boot boot arguments? (root={$root} rw)
-input_timeout = Please input the timeout (seconds) for systemd-boot to show the boot menu
+
+ask_overwrite = {$entry} already exists. Overwrite?
+ask_set_default = Set {$kernel} as default boot entry?
+select_install = Kernel(s) to register as boot entry(s)
+select_remove = Kernel(s) to remove from the boot menu
+select_default = Default kernel to boot from
+ask_init = Proceed with installing and initializing systemd-boot?
+ask_update = Proceed with searching and creating boot entries?
+ask_empty_bootarg = Generate the boot arguments?
+ask_current_bootarg = Use as default systemd-boot boot arguments?
+ask_current_root = Use as default systemd-boot boot arguments? (root={$root} rw)
+input_timeout = Boot menu timeout (seconds)
