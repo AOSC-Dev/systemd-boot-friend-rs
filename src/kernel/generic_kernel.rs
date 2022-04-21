@@ -245,6 +245,7 @@ impl GenericKernel {
         let vmlinux = config.vmlinux.replace("{VERSION}", kernel_name);
         let initrd = config.initrd.replace("{VERSION}", kernel_name);
         let entry = kernel_name.to_owned();
+        sbconf.borrow_mut().load_current()?;
 
         Ok(Self {
             version,

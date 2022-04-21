@@ -89,12 +89,7 @@ fn specify_or_choose(
 }
 
 /// Initialize the default environment for friend
-fn init<K: Kernel>(
-    config: &Config,
-    installed_kernels: &[Rc<K>],
-    kernels: &[Rc<K>],
-    sbconf: Rc<RefCell<SystemdBootConf>>,
-) -> Result<()> {
+fn init(config: &Config) -> Result<()> {
     // use bootctl to install systemd-boot
     println_with_prefix_and_fl!("init");
     print_block_with_fl!("prompt_init");
@@ -124,9 +119,20 @@ fn init<K: Kernel>(
         bail!(String::from_utf8(child_output.stderr)?);
     }
 
+    let sbconf = Rc::new(RefCell::new(SystemdBootConf::new(
+        &config.esp_mountpoint.join("loader/"),
+        libsdbootconf::Config::default(),
+        Vec::new(),
+    )));
+
+    // Initialize a default config for systemd-boot
+    sbconf.borrow().write_all()?;
     // Set default timeout to 5
     sbconf.borrow_mut().config.timeout = Some(5u32);
     sbconf.borrow().write_config()?;
+
+    let installed_kernels = GenericKernel::list_installed(config, sbconf.clone())?;
+    let kernels = GenericKernel::list(config, sbconf)?;
 
     // create folder structure
     println_with_prefix_and_fl!("create_folder");
@@ -138,7 +144,7 @@ fn init<K: Kernel>(
         .with_prompt(fl!("ask_update"))
         .default(false)
         .interact()?
-        .then(|| update(installed_kernels, kernels))
+        .then(|| update(&installed_kernels, &kernels))
         .transpose()?;
 
     Ok(())
@@ -195,16 +201,24 @@ fn main() -> Result<()> {
 
     // Read config, create a default one if the file is missing
     let config = Config::read()?;
-    let sbconf = Rc::new(RefCell::new(SystemdBootConf::load(
+
+    if let Some(SubCommands::Init) = &matches.subcommands {
+        init(&config)?;
+        return Ok(());
+    }
+
+    let sbconf = Rc::new(RefCell::new(SystemdBootConf::new(
         &config.esp_mountpoint.join("loader/"),
-    )?));
+        libsdbootconf::Config::default(),
+        Vec::new(),
+    )));
     let installed_kernels = GenericKernel::list_installed(&config, sbconf.clone())?;
     let kernels = GenericKernel::list(&config, sbconf.clone())?;
 
     // Switch table
     match matches.subcommands {
         Some(s) => match s {
-            SubCommands::Init => init(&config, &installed_kernels, &kernels, sbconf)?,
+            SubCommands::Init => unreachable!(),
             SubCommands::Update => update(&installed_kernels, &kernels)?,
             SubCommands::InstallKernel(args) => specify_or_choose(
                 &config,
