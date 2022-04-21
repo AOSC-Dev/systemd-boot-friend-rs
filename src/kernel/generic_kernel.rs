@@ -7,7 +7,7 @@ use libsdbootconf::{
 use regex::Regex;
 use std::{cmp::Ordering, fmt, fs, io::prelude::*, path::PathBuf, rc::Rc};
 
-use super::{safe_copy, Kernel, REL_ENTRY_PATH};
+use super::{file_copy, Kernel, REL_ENTRY_PATH};
 use crate::{
     colorful_theme_modded, fl, print_block_with_fl, println_with_prefix,
     println_with_prefix_and_fl,
@@ -68,12 +68,12 @@ impl Kernel for GenericKernel {
 
         // Copy the source files to the `install_path` using specific
         // filename format, remove the version parts of the files
-        safe_copy(src_path.join(&self.vmlinux), dest_path.join(&self.vmlinux))?;
+        file_copy(src_path.join(&self.vmlinux), dest_path.join(&self.vmlinux))?;
 
         let initrd_path = src_path.join(&self.initrd);
 
         if initrd_path.exists() {
-            safe_copy(src_path.join(&self.initrd), dest_path.join(&self.initrd))?;
+            file_copy(src_path.join(&self.initrd), dest_path.join(&self.initrd))?;
         }
 
         // copy Intel ucode if exists
@@ -82,7 +82,7 @@ impl Kernel for GenericKernel {
 
         if ucode_path.exists() {
             println_with_prefix_and_fl!("install_ucode");
-            safe_copy(ucode_path, ucode_dest_path)?;
+            file_copy(ucode_path, ucode_dest_path)?;
         } else {
             fs::remove_file(ucode_dest_path).ok();
         }

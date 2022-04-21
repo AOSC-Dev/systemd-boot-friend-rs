@@ -1,5 +1,5 @@
 use anyhow::{bail, Result};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use std::{fmt::Display, fs, io, path::Path};
 
 use crate::fl;
@@ -29,11 +29,11 @@ fn same_files<P: AsRef<Path>>(file1: P, file2: P) -> Result<bool> {
     Ok(hash1 == hash2)
 }
 
-// Make sure the copy is complete, otherwise possible ENOSPC (No space left on device)
-pub fn safe_copy<P: AsRef<Path>>(src: P, dest: P) -> Result<()> {
-    if dest.as_ref().exists()
-        && !same_files(&src, &dest)?
+pub fn file_copy<P: AsRef<Path>>(src: P, dest: P) -> Result<()> {
+    // Only copy if the dest file is missing / different
+    if (!dest.as_ref().exists() || !same_files(&src, &dest)?)
         && fs::metadata(&src)?.len() != fs::copy(&src, &dest)?
+    // Make sure the copy is complete
     {
         // Remove incomplete copy
         fs::remove_file(&dest)?;
