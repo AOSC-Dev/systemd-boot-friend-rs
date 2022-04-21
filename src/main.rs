@@ -202,6 +202,7 @@ fn main() -> Result<()> {
     // Read config, create a default one if the file is missing
     let config = Config::read()?;
 
+    // Preprocess init subcommand
     if let Some(SubCommands::Init) = &matches.subcommands {
         init(&config)?;
         return Ok(());
