@@ -14,15 +14,15 @@ const CMDLINE: &str = "/proc/cmdline";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    #[serde(alias = "VMLINUX", alias = "VMLINUZ")]
+    #[serde(rename = "VMLINUX", alias = "VMLINUZ")]
     pub vmlinux: String,
-    #[serde(alias = "INITRD")]
+    #[serde(rename = "INITRD")]
     pub initrd: String,
-    #[serde(alias = "DISTRO")]
+    #[serde(rename = "DISTRO")]
     pub distro: String,
-    #[serde(alias = "ESP_MOUNTPOINT")]
+    #[serde(rename = "ESP_MOUNTPOINT")]
     pub esp_mountpoint: PathBuf,
-    #[serde(alias = "BOOTARG")]
+    #[serde(rename = "BOOTARG")]
     pub bootarg: String,
 }
 
