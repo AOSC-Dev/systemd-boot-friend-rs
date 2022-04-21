@@ -5,7 +5,7 @@ use libsdbootconf::{
     SystemdBootConf,
 };
 use regex::Regex;
-use std::{cmp::Ordering, fmt, fs, io::prelude::*, path::PathBuf, rc::Rc};
+use std::{cell::RefCell, cmp::Ordering, fmt, fs, path::PathBuf, rc::Rc};
 
 use super::{file_copy, Kernel, REL_ENTRY_PATH};
 use crate::{
@@ -19,7 +19,7 @@ const MODULES_PATH: &str = "/usr/lib/modules/";
 const UCODE: &str = "intel-ucode.img";
 
 /// A kernel struct for parsing kernel filenames
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Clone)]
 pub struct GenericKernel {
     version: GenericVersion,
     vmlinux: String,
@@ -28,7 +28,22 @@ pub struct GenericKernel {
     esp_mountpoint: PathBuf,
     entry: String,
     bootarg: String,
+    sbconf: Rc<RefCell<SystemdBootConf>>,
 }
+
+impl PartialEq for GenericKernel {
+    fn eq(&self, other: &Self) -> bool {
+        self.version == other.version
+            && self.vmlinux == other.vmlinux
+            && self.initrd == other.initrd
+            && self.distro == other.distro
+            && self.esp_mountpoint == other.esp_mountpoint
+            && self.entry == other.entry
+            && self.bootarg == other.bootarg
+    }
+}
+
+impl Eq for GenericKernel {}
 
 impl Ord for GenericKernel {
     fn cmp(&self, other: &Self) -> Ordering {
@@ -108,7 +123,7 @@ impl Kernel for GenericKernel {
         println_with_prefix_and_fl!("remove_entry", kernel = self.to_string());
         let entry = self
             .esp_mountpoint
-            .join(format!("loader/entries/{}", self.entry));
+            .join(format!("loader/entries/{}.conf", self.entry));
 
         fs::remove_file(&entry)
             .map_err(|x| eprintln!("WARNING: {}: {}", &entry.display(), x))
@@ -172,18 +187,8 @@ impl Kernel for GenericKernel {
                 .push(Token::Initrd(rel_dest_path.join(&self.initrd)))
         });
         entry.tokens.push(Token::Options(self.bootarg.to_owned()));
-
-        let mut file = fs::File::create(&entry_path)?;
-        let buffer = entry.to_string();
-
-        file.write_all(buffer.as_bytes())?;
-
-        // Make sure the file is complete, otherwise possible ENOSPC (No space left on device)
-        if file.metadata()?.len() != buffer.as_bytes().len() as u64 {
-            // Remove incomplete file
-            fs::remove_file(&entry_path)?;
-            bail!(fl!("no_space"));
-        }
+        self.sbconf.borrow_mut().entries.push(entry);
+        self.sbconf.borrow().write_entries()?;
 
         Ok(())
     }
@@ -191,23 +196,18 @@ impl Kernel for GenericKernel {
     // Set default entry
     fn set_default(&self) -> Result<()> {
         println_with_prefix_and_fl!("set_default", kernel = self.to_string());
-
-        let mut conf = SystemdBootConf::load(&self.esp_mountpoint.join("loader/"))?;
-
-        conf.config.default = Some(self.entry.to_owned());
-        conf.write_all()?;
+        self.sbconf.borrow_mut().config.default = Some(self.entry.to_owned());
+        self.sbconf.borrow().write_config()?;
 
         Ok(())
     }
 
     // Remove default entry
     fn remove_default(&self) -> Result<()> {
-        let mut conf = SystemdBootConf::load(&self.esp_mountpoint.join("loader/"))?;
-
-        if conf.config.default.as_ref() == Some(&self.entry) {
+        if self.sbconf.borrow().config.default.as_ref() == Some(&self.entry) {
             println_with_prefix_and_fl!("remove_default", kernel = self.to_string());
-            conf.config.default = None;
-            conf.write_all()?;
+            self.sbconf.borrow_mut().config.default = None;
+            self.sbconf.borrow().write_config()?;
         }
 
         Ok(())
@@ -236,11 +236,15 @@ impl Kernel for GenericKernel {
 
 impl GenericKernel {
     /// Parse a kernel filename
-    pub fn parse(config: &Config, kernel_name: &str) -> Result<Self> {
+    pub fn parse(
+        config: &Config,
+        kernel_name: &str,
+        sbconf: Rc<RefCell<SystemdBootConf>>,
+    ) -> Result<Self> {
         let version = GenericVersion::parse(kernel_name)?;
         let vmlinux = config.vmlinux.replace("{VERSION}", kernel_name);
         let initrd = config.initrd.replace("{VERSION}", kernel_name);
-        let entry = kernel_name.to_owned() + ".conf";
+        let entry = kernel_name.to_owned();
 
         Ok(Self {
             version,
@@ -250,23 +254,27 @@ impl GenericKernel {
             esp_mountpoint: config.esp_mountpoint.to_owned(),
             entry,
             bootarg: config.bootarg.to_owned(),
+            sbconf,
         })
     }
 
     /// Generate a sorted vector of kernel filenames
-    pub fn list(config: &Config) -> Result<Vec<Rc<Self>>> {
+    pub fn list(config: &Config, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<Vec<Rc<Self>>> {
         // read /usr/lib/modules to get kernel filenames
         let mut kernels = Vec::new();
 
         for f in fs::read_dir(MODULES_PATH)? {
-            let dirname = f?.file_name().into_string().unwrap();
+            let dirname = f?
+                .file_name()
+                .into_string()
+                .map_err(|s| anyhow!("fail to parse directory name: {:?}", s))?;
             let dirpath = PathBuf::from(MODULES_PATH).join(&dirname);
 
             if dirpath.join("modules.dep").exists()
                 && dirpath.join("modules.order").exists()
                 && dirpath.join("modules.builtin").exists()
             {
-                match Self::parse(config, &dirname) {
+                match Self::parse(config, &dirname, sbconf.clone()) {
                     Ok(k) => kernels.push(Rc::new(k)),
                     Err(_) => {
                         println_with_prefix_and_fl!("skip_unidentified_kernel", kernel = dirname);
@@ -285,7 +293,10 @@ impl GenericKernel {
     }
 
     /// Generate installed kernel list
-    pub fn list_installed(config: &Config) -> Result<Vec<Rc<Self>>> {
+    pub fn list_installed(
+        config: &Config,
+        sbconf: Rc<RefCell<SystemdBootConf>>,
+    ) -> Result<Vec<Rc<Self>>> {
         let mut installed_kernels = Vec::new();
 
         // Construct regex for the template
@@ -305,7 +316,7 @@ impl GenericKernel {
                         .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
                         .as_str();
 
-                    installed_kernels.push(Rc::new(Self::parse(config, version)?));
+                    installed_kernels.push(Rc::new(Self::parse(config, version, sbconf.clone())?));
                 }
             }
         }

@@ -3,7 +3,9 @@ use clap::Parser;
 use console::{style, Style};
 use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
+use libsdbootconf::SystemdBootConf;
 use std::{
+    cell::RefCell,
     fs,
     process::{Command, Stdio},
     rc::Rc,
@@ -57,13 +59,14 @@ fn parse_num_or_filename(
     config: &Config,
     n: &str,
     kernels: &[Rc<GenericKernel>],
+    sbconf: Rc<RefCell<SystemdBootConf>>,
 ) -> Result<Rc<GenericKernel>> {
     match n.parse::<usize>() {
         Ok(num) => Ok(kernels
             .get(num - 1)
             .ok_or_else(|| anyhow!(fl!("invalid_index")))?
             .clone()),
-        Err(_) => Ok(Rc::new(GenericKernel::parse(config, n)?)),
+        Err(_) => Ok(Rc::new(GenericKernel::parse(config, n, sbconf)?)),
     }
 }
 
@@ -73,11 +76,12 @@ fn specify_or_choose(
     arg: &Option<String>,
     kernels: &[Rc<GenericKernel>],
     prompt: &str,
+    sbconf: Rc<RefCell<SystemdBootConf>>,
 ) -> Result<Vec<Rc<GenericKernel>>> {
     match arg {
         // the target can be both the number in
         // the list and the name of the kernel
-        Some(n) => Ok(vec![parse_num_or_filename(config, n, kernels)?]),
+        Some(n) => Ok(vec![parse_num_or_filename(config, n, kernels, sbconf)?]),
         // select the kernel to remove
         // when no target is given
         None => choose_kernel(kernels, prompt),
@@ -85,7 +89,12 @@ fn specify_or_choose(
 }
 
 /// Initialize the default environment for friend
-fn init<K: Kernel>(config: &Config, installed_kernels: &[Rc<K>], kernels: &[Rc<K>]) -> Result<()> {
+fn init<K: Kernel>(
+    config: &Config,
+    installed_kernels: &[Rc<K>],
+    kernels: &[Rc<K>],
+    sbconf: Rc<RefCell<SystemdBootConf>>,
+) -> Result<()> {
     // use bootctl to install systemd-boot
     println_with_prefix_and_fl!("init");
     print_block_with_fl!("prompt_init");
@@ -114,6 +123,10 @@ fn init<K: Kernel>(config: &Config, installed_kernels: &[Rc<K>], kernels: &[Rc<K
     if !child_output.status.success() {
         bail!(String::from_utf8(child_output.stderr)?);
     }
+
+    // Set default timeout to 5
+    sbconf.borrow_mut().config.timeout = Some(5u32);
+    sbconf.borrow().write_config()?;
 
     // create folder structure
     println_with_prefix_and_fl!("create_folder");
@@ -182,24 +195,32 @@ fn main() -> Result<()> {
 
     // Read config, create a default one if the file is missing
     let config = Config::read()?;
-    let installed_kernels = GenericKernel::list_installed(&config)?;
-    let kernels = GenericKernel::list(&config)?;
+    let sbconf = Rc::new(RefCell::new(SystemdBootConf::load(
+        &config.esp_mountpoint.join("loader/"),
+    )?));
+    let installed_kernels = GenericKernel::list_installed(&config, sbconf.clone())?;
+    let kernels = GenericKernel::list(&config, sbconf.clone())?;
 
     // Switch table
     match matches.subcommands {
         Some(s) => match s {
-            SubCommands::Init => init(&config, &installed_kernels, &kernels)?,
+            SubCommands::Init => init(&config, &installed_kernels, &kernels, sbconf)?,
             SubCommands::Update => update(&installed_kernels, &kernels)?,
-            SubCommands::InstallKernel(args) => {
-                specify_or_choose(&config, &args.target, &kernels, &fl!("select_install"))?
-                    .iter()
-                    .try_for_each(|k| install(k.clone(), args.force))?
-            }
+            SubCommands::InstallKernel(args) => specify_or_choose(
+                &config,
+                &args.target,
+                &kernels,
+                &fl!("select_install"),
+                sbconf,
+            )?
+            .iter()
+            .try_for_each(|k| install(k.clone(), args.force))?,
             SubCommands::RemoveKernel(args) => specify_or_choose(
                 &config,
                 &args.target,
                 &installed_kernels,
                 &fl!("select_remove"),
+                sbconf,
             )?
             .iter()
             .try_for_each(|k| k.remove())?,
