@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, Result};
-use dialoguer::Confirm;
+use dialoguer::{theme::ColorfulTheme, Confirm};
 use libsdbootconf::{
     entry::{EntryBuilder, Token},
     SystemdBootConf,
@@ -9,8 +9,7 @@ use std::{cell::RefCell, cmp::Ordering, fmt, fs, path::PathBuf, rc::Rc};
 
 use super::{file_copy, Kernel, REL_ENTRY_PATH};
 use crate::{
-    colorful_theme_modded, fl, print_block_with_fl, println_with_prefix,
-    println_with_prefix_and_fl,
+    fl, print_block_with_fl, println_with_prefix, println_with_prefix_and_fl,
     version::{generic_version::GenericVersion, Version},
     Config, REL_DEST_PATH, SRC_PATH,
 };
@@ -24,10 +23,10 @@ pub struct GenericKernel {
     version: GenericVersion,
     vmlinux: String,
     initrd: String,
-    distro: String,
-    esp_mountpoint: PathBuf,
+    distro: Rc<String>,
+    esp_mountpoint: Rc<PathBuf>,
     entry: String,
-    bootarg: String,
+    bootarg: Rc<String>,
     sbconf: Rc<RefCell<SystemdBootConf>>,
 }
 
@@ -151,7 +150,7 @@ impl Kernel for GenericKernel {
         let entry_path = entries_path.join(&self.entry);
 
         if entry_path.exists() && !force_write {
-            let overwrite = Confirm::with_theme(&colorful_theme_modded())
+            let overwrite = Confirm::with_theme(&ColorfulTheme::default())
                 .with_prompt(fl!("ask_overwrite", entry = entry_path.to_string_lossy()))
                 .default(false)
                 .interact()?;
@@ -186,7 +185,7 @@ impl Kernel for GenericKernel {
                 .tokens
                 .push(Token::Initrd(rel_dest_path.join(&self.initrd)))
         });
-        entry.tokens.push(Token::Options(self.bootarg.to_owned()));
+        entry.tokens.push(Token::Options((*self.bootarg).to_owned()));
         self.sbconf.borrow_mut().entries.push(entry);
         self.sbconf.borrow().write_entries()?;
 
@@ -215,7 +214,7 @@ impl Kernel for GenericKernel {
 
     #[inline]
     fn ask_set_default(&self) -> Result<()> {
-        Confirm::with_theme(&colorful_theme_modded())
+        Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt(fl!("ask_set_default", kernel = self.to_string()))
             .default(false)
             .interact()?
@@ -251,10 +250,10 @@ impl GenericKernel {
             version,
             vmlinux,
             initrd,
-            distro: config.distro.to_owned(),
-            esp_mountpoint: config.esp_mountpoint.to_owned(),
+            distro: config.distro.clone(),
+            esp_mountpoint: config.esp_mountpoint.clone(),
             entry,
-            bootarg: config.bootarg.to_owned(),
+            bootarg: config.bootarg.clone(),
             sbconf,
         })
     }

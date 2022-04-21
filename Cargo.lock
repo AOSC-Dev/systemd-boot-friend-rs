@@ -805,7 +805,6 @@ dependencies = [
  "anyhow",
  "clap",
  "clap_complete",
- "console",
  "dialoguer",
  "i18n-embed",
  "i18n-embed-fl",

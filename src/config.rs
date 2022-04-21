@@ -1,11 +1,11 @@
 use anyhow::{anyhow, bail, Result};
-use dialoguer::Confirm;
+use dialoguer::{Confirm, theme::ColorfulTheme};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, rc::Rc};
 use textwrap::{wrap, Options, WordSeparator, WordSplitter};
 
 use crate::{
-    colorful_theme_modded, fl, print_block_with_fl, println_with_prefix, println_with_prefix_and_fl,
+    fl, print_block_with_fl, println_with_prefix, println_with_prefix_and_fl,
 };
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
@@ -19,11 +19,11 @@ pub struct Config {
     #[serde(rename = "INITRD")]
     pub initrd: String,
     #[serde(rename = "DISTRO")]
-    pub distro: String,
+    pub distro: Rc<String>,
     #[serde(rename = "ESP_MOUNTPOINT")]
-    pub esp_mountpoint: PathBuf,
+    pub esp_mountpoint: Rc<PathBuf>,
     #[serde(rename = "BOOTARG")]
-    pub bootarg: String,
+    pub bootarg: Rc<String>,
 }
 
 impl Default for Config {
@@ -31,9 +31,9 @@ impl Default for Config {
         Config {
             vmlinux: "vmlinuz-{VERSION}".to_owned(),
             initrd: "initramfs-{VERSION}.img".to_owned(),
-            distro: "Linux".to_owned(),
-            esp_mountpoint: PathBuf::from("/efi"),
-            bootarg: String::new(),
+            distro: Rc::new("Linux".to_owned()),
+            esp_mountpoint: Rc::new(PathBuf::from("/efi")),
+            bootarg: Rc::new(String::new()),
         }
     }
 }
@@ -98,7 +98,7 @@ impl Config {
     fn fill_empty_bootarg(&mut self) -> Result<()> {
         print_block_with_fl!("prompt_empty_bootarg");
 
-        if Confirm::with_theme(&colorful_theme_modded())
+        if Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt(fl!("ask_empty_bootarg"))
             .default(true)
             .interact()?
@@ -118,22 +118,22 @@ impl Config {
                 eprintln!("{}", line);
             }
 
-            if Confirm::with_theme(&colorful_theme_modded())
+            if Confirm::with_theme(&ColorfulTheme::default())
                 .with_prompt(fl!("ask_current_bootarg"))
                 .default(true)
                 .interact()?
             {
-                self.bootarg = current_bootarg;
+                self.bootarg = Rc::new(current_bootarg);
                 self.write()?;
             } else {
                 print_block_with_fl!("prompt_current_root", root = root.as_str());
 
-                if Confirm::with_theme(&colorful_theme_modded())
+                if Confirm::with_theme(&ColorfulTheme::default())
                     .with_prompt(fl!("ask_current_root", root = root.as_str()))
                     .default(true)
                     .interact()?
                 {
-                    self.bootarg = format!("root={} rw", root);
+                    self.bootarg = Rc::new(format!("root={} rw", root));
                 } else {
                     bail!(fl!("edit_bootarg", config = CONF_PATH));
                 }
