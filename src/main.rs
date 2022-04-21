@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Result};
 use clap::Parser;
 use core::default::Default;
-use dialoguer::{theme::ColorfulTheme, Confirm, MultiSelect};
+use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
 use libsdbootconf::SystemdBootConf;
 use std::{
     cell::RefCell,
@@ -228,6 +228,21 @@ fn main() -> Result<()> {
             .try_for_each(|k| k.remove())?,
             SubCommands::ListAvailable => print_kernels(&kernels),
             SubCommands::ListInstalled => print_kernels(&installed_kernels),
+            SubCommands::Config => {
+                installed_kernels[Select::with_theme(&ColorfulTheme::default())
+                    .with_prompt(fl!("select_default"))
+                    .items(&installed_kernels)
+                    .default(0)
+                    .interact()?]
+                .set_default()?;
+                sbconf.borrow_mut().config.timeout = Some(
+                    Input::with_theme(&ColorfulTheme::default())
+                        .with_prompt(fl!("input_timeout"))
+                        .default(5u32)
+                        .interact()?,
+                );
+                sbconf.borrow().write_config()?;
+            }
         },
         None => unreachable!(),
     }

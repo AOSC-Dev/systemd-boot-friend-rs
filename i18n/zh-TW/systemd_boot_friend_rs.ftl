@@ -13,6 +13,7 @@ err_path_not_exist = {$path} 不存在
 skip_incomplete_kernel = 已跳過不完整的核心 {$kernel} ...
 skip_unidentified_kernel = 已跳過不明核心 {$kernel} ...
 no_space = 裝置上已無多餘空間
+edit_bootarg = 請使用任意文字編輯器編輯 {$config} 中的 `BOOTARG=` 項目
 
 create_folder = 正在建立 friend 資料夾結構...
 note_copy_files = 注意：systemd-boot-friend 將把核心檔案複製到您的 EFI 系統分割區
@@ -29,6 +30,7 @@ ask_set_default = 是否要將 {$kernel} 設為預設開機選項？
 remove_default = 正在刪除預設開機選項 {$kernel} ...
 select_install = 請選擇要登記開機選項的核心
 select_remove = 請選擇要從開機選單移除的核心
+select_default = 請選擇要設定為預設開機選項的核心
 init = 正在安裝並初始化 systemd-boot ...
 prompt_init =
     systemd-boot-friend 即將安裝及初始化 systemd-boot，並將其設定為預設 EFI 開機選項
@@ -49,4 +51,4 @@ prompt_current_bootarg = 偵測到了當前使用的開機引數（核心命令�
 ask_current_bootarg = 是否要以此作為 systemd-boot 預設開機引數？
 prompt_current_root = 偵測到了當前的根目錄分割區： {$root}
 ask_current_root = 是否要以此產生 systemd-boot 預設開機引數？（root={$root} rw）
-edit_bootarg = 請使用任意文字編輯器編輯 {$config} 中的 `BOOTARG=` 項目。
+input_timeout = 請鍵入 systemd-boot 開機選單的等候時長（秒）

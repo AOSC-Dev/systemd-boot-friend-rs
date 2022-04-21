@@ -13,6 +13,7 @@ err_path_not_exist = {$path} 不存在
 skip_incomplete_kernel = 已跳过不完整的内核 {$kernel} ...
 skip_unidentified_kernel = 已跳过不明内核 {$kernel} ...
 no_space = 设备上没有空间
+edit_bootarg = 请使用任意文本编辑器编辑 {$config} 中的 `BOOTARG=` 条目
 
 create_folder = 正在建立 friend 目录结构...
 note_copy_files = 注意：systemd-boot-friend 将把内核文件复制到您的 EFI 系统分区
@@ -29,6 +30,7 @@ ask_set_default = 是否要将 {$kernel} 设为默认启动项？
 remove_default = 正在移除启动项 {$kernel} ...
 select_install = 请选择要登记启动项的内核
 select_remove = 请选择要从启动菜单移除的内核
+select_default = 请选择要设为默认启动项的内核
 init = 正在安装并初始化 systemd-boot ...
 prompt_init =
     systemd-boot-friend 即将安装及初始化 systemd-boot，并将其设置为默认 EFI 启动项。
@@ -49,4 +51,4 @@ prompt_current_bootarg = 检测到了当前使用的启动参数（内核命令�
 ask_current_bootarg = 是否要以此作为 systemd-boot 默认启动参数？
 prompt_current_root = 检测到了当前的根目录分区： {$root}
 ask_current_root = 是否要以此生成 systemd-boot 默认启动参数？（root={$root} rw）
-edit_bootarg = 请使用任意文本编辑器编辑 {$config} 中的 `BOOTARG=` 条目。
+input_timeout = 请输入 systemd-boot 启动菜单的等待时长（秒）

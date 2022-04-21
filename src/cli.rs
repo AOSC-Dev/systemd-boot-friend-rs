@@ -25,6 +25,9 @@ pub enum SubCommands {
     /// List all installed kernels
     #[clap(display_order = 6)]
     ListInstalled,
+    /// Configure systemd-boot
+    #[clap(display_order = 7)]
+    Config,
 }
 
 /// Install the kernel specified
