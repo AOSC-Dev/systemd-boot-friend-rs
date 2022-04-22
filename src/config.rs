@@ -96,7 +96,7 @@ impl Config {
 
     /// Try to fill an empty BOOTARG option in Config
     fn fill_empty_bootarg(&mut self) -> Result<()> {
-        print_block_with_fl!("prompt_empty_bootarg");
+        print_block_with_fl!("notice_empty_bootarg");
 
         if Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt(fl!("ask_empty_bootarg"))
@@ -106,7 +106,7 @@ impl Config {
             let current_bootarg = String::from_utf8(fs::read(CMDLINE)?)?;
             let root = detect_root_partition()?;
 
-            print_block_with_fl!("prompt_current_bootarg");
+            print_block_with_fl!("current_bootarg");
 
             // print bootarg (kernel command line), wrap at col 80
             for line in wrap(
@@ -126,7 +126,7 @@ impl Config {
                 self.bootarg = Rc::new(current_bootarg);
                 self.write()?;
             } else {
-                print_block_with_fl!("prompt_current_root", root = root.as_str());
+                print_block_with_fl!("current_root", root = root.as_str());
 
                 if Confirm::with_theme(&ColorfulTheme::default())
                     .with_prompt(fl!("ask_current_root", root = root.as_str()))

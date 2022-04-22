@@ -79,7 +79,7 @@ fn specify_or_choose(
 fn init(config: &Config) -> Result<()> {
     // use bootctl to install systemd-boot
     println_with_prefix_and_fl!("init");
-    print_block_with_fl!("prompt_init");
+    print_block_with_fl!("notice_init");
 
     if !Confirm::with_theme(&ColorfulTheme::default())
         .with_prompt(fl!("ask_init"))
@@ -127,12 +127,14 @@ fn init(config: &Config) -> Result<()> {
 
     // Update systemd-boot kernels and entries
     print_block_with_fl!("prompt_update", src_path = SRC_PATH);
-    Confirm::with_theme(&ColorfulTheme::default())
+    if Confirm::with_theme(&ColorfulTheme::default())
         .with_prompt(fl!("ask_update"))
         .default(false)
-        .interact()?
-        .then(|| update(&installed_kernels, &kernels))
-        .transpose()?;
+        .interact()? {
+        update(&installed_kernels, &kernels)?;
+    } else {
+        println_with_prefix_and_fl!("skip_update");
+    }
 
     Ok(())
 }
