@@ -11,6 +11,7 @@ pub trait Kernel: Display + Clone + PartialEq {
     fn set_default(&self) -> Result<()>;
     fn remove_default(&self) -> Result<()>;
     fn ask_set_default(&self) -> Result<()>;
+    fn is_default(&self) -> bool;
     fn install_and_make_config(&self, force_write: bool) -> Result<()>;
 }
 

@@ -226,6 +226,16 @@ impl Kernel for GenericKernel {
         Ok(())
     }
 
+    /// Check if the kernel is the default kernel
+    #[inline]
+    fn is_default(&self) -> bool {
+        if let Some(default) = &self.sbconf.borrow().config.default {
+            default == &self.to_string()
+        } else {
+            false
+        }
+    }
+
     #[inline]
     fn install_and_make_config(&self, force_write: bool) -> Result<()> {
         self.install()?;

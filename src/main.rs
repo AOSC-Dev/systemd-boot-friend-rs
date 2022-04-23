@@ -193,16 +193,6 @@ fn update<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) -> Result<(
     Ok(())
 }
 
-/// Check if the kernel is the default kernel
-#[inline]
-fn is_default<K: Kernel>(kernel: Rc<K>, sbconf: Rc<RefCell<SystemdBootConf>>) -> bool {
-    if let Some(default) = &sbconf.borrow().config.default {
-        default == &kernel.to_string()
-    } else {
-        false
-    }
-}
-
 #[inline]
 fn install<K: Kernel>(kernel: Rc<K>, force: bool) -> Result<()> {
     print_block_with_fl!("note_copy_files");
@@ -230,10 +220,10 @@ fn list_available<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) {
 }
 
 #[inline]
-fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>], sbconf: Rc<RefCell<SystemdBootConf>>) {
+fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>]) {
     if !installed_kernels.is_empty() {
         for k in installed_kernels.iter() {
-            if is_default(k.clone(), sbconf.clone()) {
+            if k.is_default() {
                 print!("{} ", style("[*]").green());
             } else {
                 print!("[ ] ");
@@ -307,7 +297,7 @@ fn main() -> Result<()> {
             .iter()
             .try_for_each(|k| k.remove())?,
             SubCommands::ListAvailable => list_available(&kernels, &installed_kernels),
-            SubCommands::ListInstalled => list_installed(&installed_kernels, sbconf),
+            SubCommands::ListInstalled => list_installed(&installed_kernels),
             SubCommands::SetDefault(args) => {
                 specify_or_select(
                     &config,
