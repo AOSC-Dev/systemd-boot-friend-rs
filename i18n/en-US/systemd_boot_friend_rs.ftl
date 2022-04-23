@@ -40,16 +40,18 @@ notice_empty_bootarg =
     This may cause system boot failures.
 current_bootarg = Detected current boot arguments (kernel command line):
 current_root = Detected current root partition: {$root}
+note_list_available = "*" denotes the installed kernel(s)
+note_list_installed = "*" denotes the default kernel
 
 ask_overwrite = {$entry} already exists. Overwrite?
 ask_set_default = Set {$kernel} as the default boot entry?
-select_install = Kernel(s) to register as boot entry(s)
+select_install = Kernel(s) to install as boot entry(s)
 select_remove = Kernel(s) to remove from the boot menu
 select_default = Default kernel to boot from
 ask_init = Proceed with installing and initializing systemd-boot?
 prompt_update =
     Successfully initialized systemd-boot. Would you like systemd-boot-friend to
-    search your `{$src_path}` directory for kernels and register them in systemd-boot
+    search your `{$src_path}` directory for kernels and install them in systemd-boot
     configuration?
 ask_update = Proceed with searching and creating boot entries?
 ask_empty_bootarg = Automatically generate the boot arguments?

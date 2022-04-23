@@ -1,5 +1,6 @@
 use anyhow::{anyhow, bail, Result};
 use clap::Parser;
+use console::style;
 use core::default::Default;
 use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
 use libsdbootconf::SystemdBootConf;
@@ -26,7 +27,7 @@ const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
 const SRC_PATH: &str = "/boot";
 
 /// Choose a kernel using dialoguer
-fn choose_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Vec<Rc<K>>> {
+fn multiselect_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Vec<Rc<K>>> {
     if kernels.is_empty() {
         bail!(fl!("empty_list"));
     }
@@ -41,37 +42,62 @@ fn choose_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Vec<Rc<K>
         .collect())
 }
 
+/// Choose a kernel using dialoguer
+fn select_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Rc<K>> {
+    if kernels.is_empty() {
+        bail!(fl!("empty_list"));
+    }
+
+    // build dialoguer MultiSelect for kernel selection
+    Ok(kernels[Select::with_theme(&ColorfulTheme::default())
+        .with_prompt(prompt)
+        .items(kernels)
+        .interact()?]
+    .clone())
+}
+
 #[inline]
-fn parse_num_or_filename(
+fn specify_or_multiselect(
     config: &Config,
-    n: &str,
+    arg: &[String],
     kernels: &[Rc<GenericKernel>],
+    prompt: &str,
     sbconf: Rc<RefCell<SystemdBootConf>>,
-) -> Result<Rc<GenericKernel>> {
-    match n.parse::<usize>() {
-        Ok(num) => Ok(kernels
-            .get(num - 1)
-            .ok_or_else(|| anyhow!(fl!("invalid_index")))?
-            .clone()),
-        Err(_) => Ok(Rc::new(GenericKernel::parse(config, n, sbconf)?)),
+) -> Result<Vec<Rc<GenericKernel>>> {
+    if arg.is_empty() {
+        // select the kernel to remove
+        // when no target is given
+        multiselect_kernel(kernels, prompt)
+    } else {
+        let mut kernels = Vec::new();
+
+        for target in arg {
+            kernels.push(Rc::new(GenericKernel::parse(
+                config,
+                target,
+                sbconf.clone(),
+            )?));
+        }
+
+        Ok(kernels)
     }
 }
 
 #[inline]
-fn specify_or_choose(
+fn specify_or_select(
     config: &Config,
     arg: &Option<String>,
     kernels: &[Rc<GenericKernel>],
     prompt: &str,
     sbconf: Rc<RefCell<SystemdBootConf>>,
-) -> Result<Vec<Rc<GenericKernel>>> {
+) -> Result<Rc<GenericKernel>> {
     match arg {
         // the target can be both the number in
         // the list and the name of the kernel
-        Some(n) => Ok(vec![parse_num_or_filename(config, n, kernels, sbconf)?]),
+        Some(n) => Ok(Rc::new(GenericKernel::parse(config, n, sbconf)?)),
         // select the kernel to remove
         // when no target is given
-        None => choose_kernel(kernels, prompt),
+        None => select_kernel(kernels, prompt),
     }
 }
 
@@ -130,7 +156,8 @@ fn init(config: &Config) -> Result<()> {
     if Confirm::with_theme(&ColorfulTheme::default())
         .with_prompt(fl!("ask_update"))
         .default(false)
-        .interact()? {
+        .interact()?
+    {
         update(&installed_kernels, &kernels)?;
     } else {
         println_with_prefix_and_fl!("skip_update");
@@ -140,7 +167,7 @@ fn init(config: &Config) -> Result<()> {
 }
 
 /// Update systemd-boot kernels and entries
-fn update<K: Kernel>(installed_kernels: &[Rc<K>], kernels: &[Rc<K>]) -> Result<()> {
+fn update<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) -> Result<()> {
     println_with_prefix_and_fl!("update");
     print_block_with_fl!("note_copy_files");
 
@@ -166,6 +193,16 @@ fn update<K: Kernel>(installed_kernels: &[Rc<K>], kernels: &[Rc<K>]) -> Result<(
     Ok(())
 }
 
+/// Check if the kernel is the default kernel
+#[inline]
+fn is_default<K: Kernel>(kernel: Rc<K>, sbconf: Rc<RefCell<SystemdBootConf>>) -> bool {
+    if let Some(default) = &sbconf.borrow().config.default {
+        default == &kernel.to_string()
+    } else {
+        false
+    }
+}
+
 #[inline]
 fn install<K: Kernel>(kernel: Rc<K>, force: bool) -> Result<()> {
     print_block_with_fl!("note_copy_files");
@@ -177,33 +214,45 @@ fn install<K: Kernel>(kernel: Rc<K>, force: bool) -> Result<()> {
 }
 
 #[inline]
-fn print_kernels<K: Kernel>(kernels: &[Rc<K>]) {
-    kernels
-        .iter()
-        .enumerate()
-        .for_each(|(i, k)| println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k))
+fn list_available<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) {
+    for k in kernels.iter() {
+        if installed_kernels.contains(k) {
+            print!("{} ", style("[*]").green());
+        } else {
+            print!("[ ] ");
+        }
+        println!("{}", k);
+    }
+    println!();
+    println_with_fl!("note_list_available");
 }
 
 #[inline]
-fn ask_set_default<K: Kernel>(installed_kernels: &[Rc<K>]) -> Result<()> {
-    installed_kernels[Select::with_theme(&ColorfulTheme::default())
-        .with_prompt(fl!("select_default"))
-        .items(installed_kernels)
-        .default(0)
-        .interact()?]
-        .set_default()?;
-
-    Ok(())
+fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>], sbconf: Rc<RefCell<SystemdBootConf>>) {
+    for k in installed_kernels.iter() {
+        if is_default(k.clone(), sbconf.clone()) {
+            print!("{} ", style("[*]").green());
+        } else {
+            print!("[ ] ");
+        }
+        println!("{}", k);
+    }
+    println!();
+    println_with_fl!("note_list_installed");
 }
 
 #[inline]
-fn ask_set_timeout(sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<()> {
-    sbconf.borrow_mut().config.timeout = Some(
-        Input::with_theme(&ColorfulTheme::default())
-            .with_prompt(fl!("input_timeout"))
-            .default(5u32)
-            .interact()?,
-    );
+fn ask_set_timeout(timeout: Option<u32>, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<()> {
+    if let Some(t) = timeout {
+        sbconf.borrow_mut().config.timeout = Some(t);
+    } else {
+        sbconf.borrow_mut().config.timeout = Some(
+            Input::with_theme(&ColorfulTheme::default())
+                .with_prompt(fl!("input_timeout"))
+                .default(5u32)
+                .interact()?,
+        );
+    }
     sbconf.borrow().write_config()?;
 
     Ok(())
@@ -234,32 +283,48 @@ fn main() -> Result<()> {
     match matches.subcommands {
         Some(s) => match s {
             SubCommands::Init => unreachable!(),
-            SubCommands::Update => update(&installed_kernels, &kernels)?,
-            SubCommands::InstallKernel(args) => specify_or_choose(
+            SubCommands::Update => update(&kernels, &installed_kernels)?,
+            SubCommands::InstallKernel(args) => specify_or_multiselect(
                 &config,
-                &args.target,
+                &args.targets,
                 &kernels,
                 &fl!("select_install"),
                 sbconf,
             )?
             .iter()
             .try_for_each(|k| install(k.clone(), args.force))?,
-            SubCommands::RemoveKernel(args) => specify_or_choose(
+            SubCommands::RemoveKernel(args) => specify_or_multiselect(
                 &config,
-                &args.target,
+                &args.targets,
                 &installed_kernels,
                 &fl!("select_remove"),
                 sbconf,
             )?
             .iter()
             .try_for_each(|k| k.remove())?,
-            SubCommands::ListAvailable => print_kernels(&kernels),
-            SubCommands::ListInstalled => print_kernels(&installed_kernels),
-            SubCommands::SetDefault => ask_set_default(&installed_kernels)?,
-            SubCommands::SetTimeout => ask_set_timeout(sbconf)?,
+            SubCommands::ListAvailable => list_available(&kernels, &installed_kernels),
+            SubCommands::ListInstalled => list_installed(&installed_kernels, sbconf),
+            SubCommands::SetDefault(args) => {
+                specify_or_select(
+                    &config,
+                    &args.target,
+                    &installed_kernels,
+                    &fl!("select_default"),
+                    sbconf,
+                )?
+                .set_default()?;
+            }
+            SubCommands::SetTimeout(args) => {
+                ask_set_timeout(args.timeout, sbconf)?;
+            }
             SubCommands::Config => {
-                ask_set_default(&installed_kernels)?;
-                ask_set_timeout(sbconf)?;
+                installed_kernels[Select::with_theme(&ColorfulTheme::default())
+                    .with_prompt(fl!("select_default"))
+                    .items(&installed_kernels)
+                    .default(0)
+                    .interact()?]
+                .set_default()?;
+                ask_set_timeout(None, sbconf)?;
             }
         },
         None => unreachable!(),

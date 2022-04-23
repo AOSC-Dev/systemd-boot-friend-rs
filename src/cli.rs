@@ -28,25 +28,35 @@ pub enum SubCommands {
     /// Configure systemd-boot
     #[clap(display_order = 7)]
     Config,
-    /// Set the default kernel
     #[clap(display_order = 8)]
-    SetDefault,
-    /// Set boot menu timeout
+    SetDefault(SetDefault),
     #[clap(display_order = 9)]
-    SetTimeout,
+    SetTimeout(SetTimeout),
 }
 
-/// Install the kernel specified
+/// Install the kernels specified
 #[derive(Parser, Debug)]
 pub struct Install {
-    pub target: Option<String>,
+    pub targets: Vec<String>,
     /// Force overwrite the entry config or not
     #[clap(long, short)]
     pub force: bool,
 }
 
-/// Remove the kernel specified
+/// Remove the kernels specified
 #[derive(Parser, Debug)]
 pub struct Remove {
+    pub targets: Vec<String>,
+}
+
+/// Set the default kernel
+#[derive(Parser, Debug)]
+pub struct SetDefault {
     pub target: Option<String>,
+}
+
+/// Set the boot menu timeout
+#[derive(Parser, Debug)]
+pub struct SetTimeout {
+    pub timeout: Option<u32>,
 }

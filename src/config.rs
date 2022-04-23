@@ -1,13 +1,11 @@
 use anyhow::{anyhow, bail, Result};
-use dialoguer::{Confirm, theme::ColorfulTheme};
+use console::style;
+use dialoguer::{theme::ColorfulTheme, Confirm};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf, rc::Rc};
-use console::style;
 use textwrap::{wrap, Options, WordSeparator, WordSplitter};
 
-use crate::{
-    fl, print_block_with_fl, println_with_prefix, println_with_prefix_and_fl,
-};
+use crate::{fl, print_block_with_fl, println_with_prefix, println_with_prefix_and_fl};
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const MOUNTS: &str = "/proc/mounts";

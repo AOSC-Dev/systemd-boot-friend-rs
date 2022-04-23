@@ -185,7 +185,9 @@ impl Kernel for GenericKernel {
                 .tokens
                 .push(Token::Initrd(rel_dest_path.join(&self.initrd)))
         });
-        entry.tokens.push(Token::Options((*self.bootarg).to_owned()));
+        entry
+            .tokens
+            .push(Token::Options((*self.bootarg).to_owned()));
         self.sbconf.borrow_mut().entries.push(entry);
         self.sbconf.borrow().write_entries()?;
 
