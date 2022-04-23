@@ -215,30 +215,34 @@ fn install<K: Kernel>(kernel: Rc<K>, force: bool) -> Result<()> {
 
 #[inline]
 fn list_available<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) {
-    for k in kernels.iter() {
-        if installed_kernels.contains(k) {
-            print!("{} ", style("[*]").green());
-        } else {
-            print!("[ ] ");
+    if !kernels.is_empty() {
+        for k in kernels.iter() {
+            if installed_kernels.contains(k) {
+                print!("{} ", style("[*]").green());
+            } else {
+                print!("[ ] ");
+            }
+            println!("{}", k);
         }
-        println!("{}", k);
+        println!();
+        println_with_fl!("note_list_available");
     }
-    println!();
-    println_with_fl!("note_list_available");
 }
 
 #[inline]
 fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>], sbconf: Rc<RefCell<SystemdBootConf>>) {
-    for k in installed_kernels.iter() {
-        if is_default(k.clone(), sbconf.clone()) {
-            print!("{} ", style("[*]").green());
-        } else {
-            print!("[ ] ");
+    if !installed_kernels.is_empty() {
+        for k in installed_kernels.iter() {
+            if is_default(k.clone(), sbconf.clone()) {
+                print!("{} ", style("[*]").green());
+            } else {
+                print!("[ ] ");
+            }
+            println!("{}", k);
         }
-        println!("{}", k);
+        println!();
+        println_with_fl!("note_list_installed");
     }
-    println!();
-    println_with_fl!("note_list_installed");
 }
 
 #[inline]
