@@ -28,29 +28,28 @@ set_default = 正在將 {$kernel} 設為預設開機選項...
 remove_default = 正在刪除預設開機選項 {$kernel} ...
 init = 正在安裝並初始化 systemd-boot ...
 notice_init =
-    systemd-boot-friend 即將安裝及初始化 systemd-boot，並將其設定為預設 EFI 開機選項
-    。完成後，您依舊可以在 EFI 開機管理程式中存取其他已安裝的開機載入器，如 GRUB 或
-    Windows 開機管理器。
+    systemd-boot-friend 即將安裝及初始化 systemd-boot，並將其設定為預設 EFI 開機選項。完
+    成後，您依舊可以從 EFI 開機管理程式中存取其他開機載入器，如 GRUB 或 Windows開機管理
+    器。
 update = 正在更新開機選項 ...
-skip_update = 您可以在之後執行 `systemd-boot-friend update` 以加入開機選項。
+skip_update = 您可以隨時執行 `systemd-boot-friend update` 以登記開機選項。
 notice_empty_bootarg =
-    systemd-boot-friend 在您的設定檔中偵測到了空的 `BOOTARG=` 項目，這有可能導致系統
-    開機失敗。
+    systemd-boot-friend 在您的設定檔中偵測到了空的 `BOOTARG=` 項目，這有可能導致系統開機
+    失敗。
 prompt_current_bootarg = 偵測到了當前使用的開機引數（核心命令列）：
 prompt_current_root = 偵測到了當前的根目錄分割區： {$root}
 
 ask_overwrite = {$entry} 已存在。是否覆寫該檔案？
-ask_set_default = 是否要將 {$kernel} 設為預設開機選項？
-select_install = 請選擇要登記開機選項的核心
-select_remove = 請選擇要從開機選單移除的核心
-select_default = 請選擇要設定為預設開機選項的核心
-ask_init = 是否要安裝並初始化 systemd-boot？
+ask_set_default = 是否將 {$kernel} 設為預設開機選項？
+select_install =要登記開機選項的核心
+select_remove = 要從開機選單移除的核心
+select_default = 預設核心
+ask_init = 是否安裝並初始化 systemd-boot？
 prompt_update =
-    systemd-boot 已成功初始化。是否要讓 systemd-boot-friend 搜尋 {$src_path} 中的核
-    心並將其登記至 systemd-boot 設定檔中？若不需要，您隨時可以執行
-    `systemd-boot-friend update` 進行該操作。
-ask_update = 是否要安裝所有核心並登記開機選項？
-ask_empty_bootarg = 需要 systemd-boot-friend 幫助您生成開機引數嗎？
-ask_current_bootarg = 是否要以此作為 systemd-boot 預設開機引數？
-ask_current_root = 是否要以此產生 systemd-boot 預設開機引數？（root={$root} rw）
-input_timeout = 請鍵入 systemd-boot 開機選單的等候時長（秒）
+    systemd-boot 已成功初始化。是否要讓 systemd-boot-friend 搜尋 `{$src_path}` 中的核心
+    並將其登記至 systemd-boot 設定檔中？
+ask_update = 是否安裝所有核心並登記開機選項？
+ask_empty_bootarg = 是否自動產生開機引數？
+ask_current_bootarg = 是否將上述開機引數設為 systemd-boot 預設引數？
+ask_current_root = 是否使用 `root={$root} rw` 產生 systemd-boot 預設開機引數？
+input_timeout = 開機選單顯示時長（秒）
