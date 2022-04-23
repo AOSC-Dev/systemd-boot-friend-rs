@@ -2,6 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use dialoguer::{Confirm, theme::ColorfulTheme};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf, rc::Rc};
+use console::style;
 use textwrap::{wrap, Options, WordSeparator, WordSplitter};
 
 use crate::{
@@ -115,7 +116,7 @@ impl Config {
                     .word_separator(WordSeparator::AsciiSpace)
                     .word_splitter(WordSplitter::NoHyphenation),
             ) {
-                eprintln!("{}", line);
+                eprintln!("{}", style(line).bold());
             }
 
             if Confirm::with_theme(&ColorfulTheme::default())
