@@ -184,6 +184,31 @@ fn print_kernels<K: Kernel>(kernels: &[Rc<K>]) {
         .for_each(|(i, k)| println!("\u{001b}[1m[{}]\u{001b}[0m {}", i + 1, k))
 }
 
+#[inline]
+fn ask_set_default<K: Kernel>(installed_kernels: &[Rc<K>]) -> Result<()> {
+    installed_kernels[Select::with_theme(&ColorfulTheme::default())
+        .with_prompt(fl!("select_default"))
+        .items(installed_kernels)
+        .default(0)
+        .interact()?]
+        .set_default()?;
+
+    Ok(())
+}
+
+#[inline]
+fn ask_set_timeout(sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<()> {
+    sbconf.borrow_mut().config.timeout = Some(
+        Input::with_theme(&ColorfulTheme::default())
+            .with_prompt(fl!("input_timeout"))
+            .default(5u32)
+            .interact()?,
+    );
+    sbconf.borrow().write_config()?;
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
     // CLI
     let matches: Opts = Opts::parse();
@@ -230,20 +255,11 @@ fn main() -> Result<()> {
             .try_for_each(|k| k.remove())?,
             SubCommands::ListAvailable => print_kernels(&kernels),
             SubCommands::ListInstalled => print_kernels(&installed_kernels),
+            SubCommands::SetDefault => ask_set_default(&installed_kernels)?,
+            SubCommands::SetTimeout => ask_set_timeout(sbconf)?,
             SubCommands::Config => {
-                installed_kernels[Select::with_theme(&ColorfulTheme::default())
-                    .with_prompt(fl!("select_default"))
-                    .items(&installed_kernels)
-                    .default(0)
-                    .interact()?]
-                .set_default()?;
-                sbconf.borrow_mut().config.timeout = Some(
-                    Input::with_theme(&ColorfulTheme::default())
-                        .with_prompt(fl!("input_timeout"))
-                        .default(5u32)
-                        .interact()?,
-                );
-                sbconf.borrow().write_config()?;
+                ask_set_default(&installed_kernels)?;
+                ask_set_timeout(sbconf)?;
             }
         },
         None => unreachable!(),

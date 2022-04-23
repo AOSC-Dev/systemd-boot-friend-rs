@@ -28,6 +28,12 @@ pub enum SubCommands {
     /// Configure systemd-boot
     #[clap(display_order = 7)]
     Config,
+    /// Set the default kernel
+    #[clap(display_order = 8)]
+    SetDefault,
+    /// Set boot menu timeout
+    #[clap(display_order = 9)]
+    SetTimeout,
 }
 
 /// Install the kernel specified
