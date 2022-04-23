@@ -7,7 +7,7 @@ invalid_index = 内核序号不正确
 no_kernel = 找不到内核
 invalid_kernel_filename = 内核文件名不正确
 info_path_not_exist =
-    systemd-boot-friend 似乎尚未初始化。执行 `systemd-boot-friend init` 即可安装并配
+    systemd-boot-friend 似乎尚未初始化。运行 `systemd-boot-friend init` 即可安装并配
     置 systemd-boot。
 err_path_not_exist = {$path} 不存在
 skip_incomplete_kernel = 已跳过不完整的内核 {$kernel} ...
@@ -29,27 +29,26 @@ remove_default = 正在移除启动项 {$kernel} ...
 init = 正在安装并初始化 systemd-boot ...
 notice_init =
     systemd-boot-friend 即将安装及初始化 systemd-boot，并将其设置为默认 EFI 启动项。完成
-    后，您依旧可以在 EFI 启动管理器中访问其他已安装的启动引导器，如 GRUB 或 Windows 启动
-    管理器。
+    后，您依旧可以从 EFI 启动管理器中访问其他启动引导器，如 GRUB 或 Windows 启动管理器。
 update = 正在更新启动项 ...
-skip_update = 您可以在之后执行 `systemd-boot-friend update` 以加入启动项。
+skip_update = 您可以随时运行 `systemd-boot-friend update` 来登记启动项。
 notice_empty_bootarg =
     systemd-boot-friend 在您的配置中检测到了空的 `BOOTARG=` 条目，这有可能导致系统启
     动失败。
 prompt_current_bootarg = 检测到了当前使用的启动参数（内核命令行）：
 prompt_current_root = 检测到了当前的根目录分区： {$root}
 
-ask_overwrite = {$entry} 已存在。覆盖该文件？
-ask_set_default = 将 {$kernel} 设为默认启动项？
+ask_overwrite = {$entry} 已存在。是否覆盖该文件？
+ask_set_default = 是否将 {$kernel} 设为默认启动项？
 select_install = 要登记启动项的内核
 select_remove = 要从启动菜单移除的内核
-select_default = 默认启动的内核
-ask_init = 安装并初始化 systemd-boot-friend？
+select_default = 默认内核
+ask_init = 是否安装并初始化 systemd-boot-friend？
 prompt_update =
     systemd-boot 已成功初始化。是否要让 systemd-boot-friend 搜索 `{$src_path}` 中的内核
     并将其登记至 systemd-boot 配置中？
-ask_update = 安装所有内核并登记启动项？
-ask_empty_bootarg = 自动生成启动参数？
-ask_current_bootarg = 将上述启动参数设为 systemd-boot 默认参数？
-ask_current_root = 使用 `root={$root} rw` 生成 systemd-boot 默认启动参数？
-input_timeout = 启动菜单等待时长（秒）
+ask_update = 是否安装所有内核并登记启动项？
+ask_empty_bootarg = 是否自动生成启动参数？
+ask_current_bootarg = 是否将上述启动参数设为 systemd-boot 默认参数？
+ask_current_root = 是否使用 `root={$root} rw` 生成 systemd-boot 默认启动参数？
+input_timeout = 启动菜单显示时长（秒）
