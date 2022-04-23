@@ -1,8 +1,6 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use sha2::{Digest, Sha256};
 use std::{fmt::Display, fs, io, path::Path};
-
-use crate::fl;
 
 const REL_ENTRY_PATH: &str = "loader/entries/";
 
@@ -31,13 +29,8 @@ fn same_files<P: AsRef<Path>>(file1: P, file2: P) -> Result<bool> {
 
 pub fn file_copy<P: AsRef<Path>>(src: P, dest: P) -> Result<()> {
     // Only copy if the dest file is missing / different
-    if (!dest.as_ref().exists() || !same_files(&src, &dest)?)
-        && fs::metadata(&src)?.len() != fs::copy(&src, &dest)?
-    // Make sure the copy is complete
-    {
-        // Remove incomplete copy
-        fs::remove_file(&dest)?;
-        bail!(fl!("no_space"));
+    if !dest.as_ref().exists() || !same_files(&src, &dest)? {
+        fs::copy(&src, &dest)?;
     }
 
     Ok(())
