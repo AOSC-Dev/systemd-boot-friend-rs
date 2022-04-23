@@ -12,6 +12,9 @@ _systemd-boot-friend() {
             "$1")
                 cmd="systemd__boot__friend"
                 ;;
+            config)
+                cmd+="__config"
+                ;;
             help)
                 cmd+="__help"
                 ;;
@@ -30,6 +33,12 @@ _systemd-boot-friend() {
             remove-kernel)
                 cmd+="__remove__kernel"
                 ;;
+            set-default)
+                cmd+="__set__default"
+                ;;
+            set-timeout)
+                cmd+="__set__timeout"
+                ;;
             update)
                 cmd+="__update"
                 ;;
@@ -40,8 +49,22 @@ _systemd-boot-friend() {
 
     case "${cmd}" in
         systemd__boot__friend)
-            opts="-h -V --help --version init update install-kernel remove-kernel list-available list-installed help"
+            opts="-h -V --help --version init update install-kernel remove-kernel list-available list-installed config set-default set-timeout help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        systemd__boot__friend__config)
+            opts="-h --help"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
@@ -82,7 +105,7 @@ _systemd-boot-friend() {
             return 0
             ;;
         systemd__boot__friend__install__kernel)
-            opts="-f -h --force --help <TARGET>"
+            opts="-f -h --force --help <TARGETS>..."
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -124,7 +147,35 @@ _systemd-boot-friend() {
             return 0
             ;;
         systemd__boot__friend__remove__kernel)
+            opts="-h --help <TARGETS>..."
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        systemd__boot__friend__set__default)
             opts="-h --help <TARGET>"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        systemd__boot__friend__set__timeout)
+            opts="-h --help <TIMEOUT>"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
