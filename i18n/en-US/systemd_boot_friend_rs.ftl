@@ -52,7 +52,7 @@ prompt_update =
     search your `{$src_path}` directory for kernels and register them in systemd-boot
     configuration?
 ask_update = Proceed with searching and creating boot entries?
-ask_empty_bootarg = Auto generate the boot arguments?
-ask_current_bootarg = Use the above as the default systemd-boot boot arguments?
+ask_empty_bootarg = Automatically generate the boot arguments?
+ask_current_bootarg = Use the boot arguments above as the systemd-boot defaults?
 ask_current_root = Use `root={$root} rw` as the default systemd-boot boot arguments?
 input_timeout = Boot menu timeout (seconds)
