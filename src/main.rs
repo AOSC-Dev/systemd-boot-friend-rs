@@ -168,11 +168,6 @@ fn update<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) -> Result<(
     println_with_prefix_and_fl!("update");
     print_block_with_fl!("note_copy_files");
 
-    // Install all kernels
-    kernels
-        .iter()
-        .try_for_each(|k| k.install_and_make_config(true))?;
-
     // Remove obsoleted kernels
     installed_kernels.iter().try_for_each(|k| {
         if !kernels.contains(k) {
@@ -181,6 +176,11 @@ fn update<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) -> Result<(
             Ok(())
         }
     })?;
+
+    // Install all kernels
+    kernels
+        .iter()
+        .try_for_each(|k| k.install_and_make_config(true))?;
 
     // Set the newest kernel as default entry
     if let Some(k) = kernels.first() {
