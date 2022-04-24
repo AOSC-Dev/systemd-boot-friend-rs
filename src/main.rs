@@ -27,6 +27,7 @@ const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
 const SRC_PATH: &str = "/boot";
 
 /// Choose kernels using dialoguer
+#[inline]
 fn multiselect_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Vec<Rc<K>>> {
     if kernels.is_empty() {
         bail!(fl!("empty_list"));
@@ -43,6 +44,7 @@ fn multiselect_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Vec<
 }
 
 /// Choose a kernel using dialoguer
+#[inline]
 fn select_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Rc<K>> {
     if kernels.is_empty() {
         bail!(fl!("empty_list"));
@@ -56,7 +58,6 @@ fn select_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Rc<K>> {
     .clone())
 }
 
-#[inline]
 fn specify_or_multiselect(
     config: &Config,
     arg: &[String],
@@ -200,7 +201,6 @@ fn install<K: Kernel>(kernel: Rc<K>, force: bool) -> Result<()> {
     Ok(())
 }
 
-#[inline]
 fn list_available<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) {
     if !kernels.is_empty() {
         for k in kernels.iter() {
@@ -216,7 +216,6 @@ fn list_available<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) {
     }
 }
 
-#[inline]
 fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>]) {
     if !installed_kernels.is_empty() {
         for k in installed_kernels.iter() {
@@ -232,7 +231,6 @@ fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>]) {
     }
 }
 
-#[inline]
 fn ask_set_timeout(timeout: Option<u32>, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<()> {
     if let Some(t) = timeout {
         sbconf.borrow_mut().config.timeout = Some(t);
