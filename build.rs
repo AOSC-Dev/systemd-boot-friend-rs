@@ -5,7 +5,7 @@ use std::{env, fs, io::Result};
 include!("src/cli.rs");
 
 const ROOT: &str = "completions";
-const APP: &str = "systemd-boot-friend";
+const APP: &str = "sbf";
 const GENERATED_COMPLETIONS: &[Shell] = &[Shell::Bash, Shell::Zsh, Shell::Fish];
 
 fn generate_completions() -> Result<()> {

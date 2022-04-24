@@ -1,0 +1,168 @@
+#compdef sbf
+
+autoload -U is-at-least
+
+_sbf() {
+    typeset -A opt_args
+    typeset -a _arguments_options
+    local ret=1
+
+    if is-at-least 5.2; then
+        _arguments_options=(-s -S -C)
+    else
+        _arguments_options=(-s -C)
+    fi
+
+    local context curcontext="$curcontext" state line
+    _arguments "${_arguments_options[@]}" \
+'-h[Print help information]' \
+'--help[Print help information]' \
+'-V[Print version information]' \
+'--version[Print version information]' \
+":: :_sbf_commands" \
+"*::: :->systemd-boot-friend-rs" \
+&& ret=0
+    case $state in
+    (systemd-boot-friend-rs)
+        words=($line[1] "${words[@]}")
+        (( CURRENT += 1 ))
+        curcontext="${curcontext%:*:*}:sbf-command-$line[1]:"
+        case $line[1] in
+            (init)
+_arguments "${_arguments_options[@]}" \
+'-h[Print help information]' \
+'--help[Print help information]' \
+&& ret=0
+;;
+(update)
+_arguments "${_arguments_options[@]}" \
+'-h[Print help information]' \
+'--help[Print help information]' \
+&& ret=0
+;;
+(install-kernel)
+_arguments "${_arguments_options[@]}" \
+'-f[Force overwrite the entry config or not]' \
+'--force[Force overwrite the entry config or not]' \
+'-h[Print help information]' \
+'--help[Print help information]' \
+'*::targets:' \
+&& ret=0
+;;
+(remove-kernel)
+_arguments "${_arguments_options[@]}" \
+'-h[Print help information]' \
+'--help[Print help information]' \
+'*::targets:' \
+&& ret=0
+;;
+(list-available)
+_arguments "${_arguments_options[@]}" \
+'-h[Print help information]' \
+'--help[Print help information]' \
+&& ret=0
+;;
+(list-installed)
+_arguments "${_arguments_options[@]}" \
+'-h[Print help information]' \
+'--help[Print help information]' \
+&& ret=0
+;;
+(config)
+_arguments "${_arguments_options[@]}" \
+'-h[Print help information]' \
+'--help[Print help information]' \
+&& ret=0
+;;
+(set-default)
+_arguments "${_arguments_options[@]}" \
+'-h[Print help information]' \
+'--help[Print help information]' \
+'::target:' \
+&& ret=0
+;;
+(set-timeout)
+_arguments "${_arguments_options[@]}" \
+'-h[Print help information]' \
+'--help[Print help information]' \
+'::timeout:' \
+&& ret=0
+;;
+(help)
+_arguments "${_arguments_options[@]}" \
+'*::subcommand -- The subcommand whose help message to display:' \
+&& ret=0
+;;
+        esac
+    ;;
+esac
+}
+
+(( $+functions[_sbf_commands] )) ||
+_sbf_commands() {
+    local commands; commands=(
+'init:Initialize systemd-boot-friend' \
+'update:Install all kernels and update boot entries' \
+'install-kernel:Install the kernels specified' \
+'remove-kernel:Remove the kernels specified' \
+'list-available:List all available kernels' \
+'list-installed:List all installed kernels' \
+'config:Configure systemd-boot' \
+'set-default:Set the default kernel' \
+'set-timeout:Set the boot menu timeout' \
+'help:Print this message or the help of the given subcommand(s)' \
+    )
+    _describe -t commands 'sbf commands' commands "$@"
+}
+(( $+functions[_sbf__config_commands] )) ||
+_sbf__config_commands() {
+    local commands; commands=()
+    _describe -t commands 'sbf config commands' commands "$@"
+}
+(( $+functions[_sbf__help_commands] )) ||
+_sbf__help_commands() {
+    local commands; commands=()
+    _describe -t commands 'sbf help commands' commands "$@"
+}
+(( $+functions[_sbf__init_commands] )) ||
+_sbf__init_commands() {
+    local commands; commands=()
+    _describe -t commands 'sbf init commands' commands "$@"
+}
+(( $+functions[_sbf__install-kernel_commands] )) ||
+_sbf__install-kernel_commands() {
+    local commands; commands=()
+    _describe -t commands 'sbf install-kernel commands' commands "$@"
+}
+(( $+functions[_sbf__list-available_commands] )) ||
+_sbf__list-available_commands() {
+    local commands; commands=()
+    _describe -t commands 'sbf list-available commands' commands "$@"
+}
+(( $+functions[_sbf__list-installed_commands] )) ||
+_sbf__list-installed_commands() {
+    local commands; commands=()
+    _describe -t commands 'sbf list-installed commands' commands "$@"
+}
+(( $+functions[_sbf__remove-kernel_commands] )) ||
+_sbf__remove-kernel_commands() {
+    local commands; commands=()
+    _describe -t commands 'sbf remove-kernel commands' commands "$@"
+}
+(( $+functions[_sbf__set-default_commands] )) ||
+_sbf__set-default_commands() {
+    local commands; commands=()
+    _describe -t commands 'sbf set-default commands' commands "$@"
+}
+(( $+functions[_sbf__set-timeout_commands] )) ||
+_sbf__set-timeout_commands() {
+    local commands; commands=()
+    _describe -t commands 'sbf set-timeout commands' commands "$@"
+}
+(( $+functions[_sbf__update_commands] )) ||
+_sbf__update_commands() {
+    local commands; commands=()
+    _describe -t commands 'sbf update commands' commands "$@"
+}
+
+_sbf "$@"
