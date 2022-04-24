@@ -201,6 +201,7 @@ fn install<K: Kernel>(kernel: Rc<K>, force: bool) -> Result<()> {
     Ok(())
 }
 
+/// Print all the available kernels
 fn list_available<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) {
     if !kernels.is_empty() {
         for k in kernels.iter() {
@@ -216,6 +217,7 @@ fn list_available<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) {
     }
 }
 
+/// Print all the installed kernels
 fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>]) {
     if !installed_kernels.is_empty() {
         for k in installed_kernels.iter() {
@@ -231,6 +233,7 @@ fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>]) {
     }
 }
 
+/// Ask for the timeout of systemd-boot boot menu
 fn ask_set_timeout(timeout: Option<u32>, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<()> {
     if let Some(t) = timeout {
         sbconf.borrow_mut().config.timeout = Some(t);
