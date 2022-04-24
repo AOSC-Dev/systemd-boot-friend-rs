@@ -26,7 +26,7 @@ use kernel::{generic_kernel::GenericKernel, Kernel};
 const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
 const SRC_PATH: &str = "/boot";
 
-/// Choose a kernel using dialoguer
+/// Choose kernels using dialoguer
 fn multiselect_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Vec<Rc<K>>> {
     if kernels.is_empty() {
         bail!(fl!("empty_list"));
@@ -65,8 +65,7 @@ fn specify_or_multiselect(
     sbconf: Rc<RefCell<SystemdBootConf>>,
 ) -> Result<Vec<Rc<GenericKernel>>> {
     if arg.is_empty() {
-        // select the kernel to remove
-        // when no target is given
+        // select the kernels when no target is given
         multiselect_kernel(kernels, prompt)
     } else {
         let mut kernels = Vec::new();
@@ -92,11 +91,9 @@ fn specify_or_select(
     sbconf: Rc<RefCell<SystemdBootConf>>,
 ) -> Result<Rc<GenericKernel>> {
     match arg {
-        // the target can be both the number in
-        // the list and the name of the kernel
+        // parse the kernel name when a target is given
         Some(n) => Ok(Rc::new(GenericKernel::parse(config, n, sbconf)?)),
-        // select the kernel to remove
-        // when no target is given
+        // select the kernel when no target is given
         None => select_kernel(kernels, prompt),
     }
 }
@@ -158,7 +155,7 @@ fn init(config: &Config) -> Result<()> {
         .default(false)
         .interact()?
     {
-        update(&installed_kernels, &kernels)?;
+        update(&kernels, &installed_kernels)?;
     } else {
         println_with_prefix_and_fl!("skip_update");
     }

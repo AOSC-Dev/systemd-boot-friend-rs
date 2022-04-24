@@ -15,7 +15,11 @@ pub trait Kernel: Display + Clone + PartialEq {
     fn install_and_make_config(&self, force_write: bool) -> Result<()>;
 }
 
-pub fn file_copy<P: AsRef<Path>>(src: P, dest: P) -> Result<()> {
+pub fn file_copy<P, Q>(src: P, dest: Q) -> Result<()>
+where
+    P: AsRef<Path>,
+    Q: AsRef<Path>,
+{
     // Only copy if the dest file is missing / different
     if !dest.as_ref().exists() || !is_same_file(&src, &dest)? {
         fs::copy(&src, &dest)?;
