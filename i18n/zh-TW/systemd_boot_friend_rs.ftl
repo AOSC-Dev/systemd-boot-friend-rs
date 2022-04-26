@@ -36,8 +36,8 @@ skip_update = 您可以隨時執行 `systemd-boot-friend update` 以登記開機
 notice_empty_bootarg =
     systemd-boot-friend 在您的設定檔中偵測到了空的 `BOOTARG=` 項目，這有可能導致系統開機
     失敗。
-prompt_current_bootarg = 偵測到了當前使用的開機引數（核心命令列）：
-prompt_current_root = 偵測到了當前的根目錄分割區： {$root}
+current_bootarg = 偵測到了目前使用的開機引數（核心命令列）：
+current_root = 偵測到了目前的根目錄分割區：{$root}
 note_list_available = "*" 表示已登記的核心
 note_list_installed = "*" 表示預設核心
 
@@ -52,6 +52,6 @@ prompt_update =
     並將其登記至 systemd-boot 設定檔中？
 ask_update = 是否安裝所有核心並登記開機選項？
 ask_empty_bootarg = 是否自動產生開機引數？
-ask_current_bootarg = 是否將上述開機引數設為 systemd-boot 預設引數？
-ask_current_root = 是否使用 `root={$root} rw` 產生 systemd-boot 預設開機引數？
+ask_current_bootarg = 是否將上述開機引數設為 systemd-boot 預設開機引數？
+ask_current_root = 是否將 `root={$root} rw` 設為 systemd-boot 預設開機引數？
 input_timeout = 開機選單顯示時長（秒）

@@ -35,8 +35,8 @@ skip_update = 您可以随时运行 `systemd-boot-friend update` 来登记启动
 notice_empty_bootarg =
     systemd-boot-friend 在您的配置中检测到了空的 `BOOTARG=` 条目，这有可能导致系统启
     动失败。
-prompt_current_bootarg = 检测到了当前使用的启动参数（内核命令行）：
-prompt_current_root = 检测到了当前的根目录分区： {$root}
+current_bootarg = 检测到了当前使用的启动参数（内核命令行）：
+current_root = 检测到了当前的根目录分区： {$root}
 note_list_available = "*" 表示已登记的内核
 note_list_installed = "*" 表示默认内核
 
@@ -51,6 +51,6 @@ prompt_update =
     并将其登记至 systemd-boot 配置中？
 ask_update = 是否安装所有内核并登记启动项？
 ask_empty_bootarg = 是否自动生成启动参数？
-ask_current_bootarg = 是否将上述启动参数设为 systemd-boot 默认参数？
-ask_current_root = 是否使用 `root={$root} rw` 生成 systemd-boot 默认启动参数？
+ask_current_bootarg = 是否将上述启动参数设为 systemd-boot 默认启动参数？
+ask_current_root = 是否将 `root={$root} rw` 设为 systemd-boot 默认启动参数？
 input_timeout = 启动菜单显示时长（秒）
