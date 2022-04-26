@@ -23,10 +23,8 @@ pub struct GenericKernel {
     version: GenericVersion,
     vmlinux: String,
     initrd: String,
-    distro: Rc<String>,
-    esp_mountpoint: Rc<PathBuf>,
     entry: String,
-    bootarg: Rc<String>,
+    config: Rc<Config>,
     sbconf: Rc<RefCell<SystemdBootConf>>,
 }
 
@@ -35,10 +33,8 @@ impl PartialEq for GenericKernel {
         self.version == other.version
             && self.vmlinux == other.vmlinux
             && self.initrd == other.initrd
-            && self.distro == other.distro
-            && self.esp_mountpoint == other.esp_mountpoint
             && self.entry == other.entry
-            && self.bootarg == other.bootarg
+            && self.config == other.config
     }
 }
 
@@ -66,7 +62,7 @@ impl Kernel for GenericKernel {
     /// Install a specific kernel to the esp using the given kernel filename
     fn install(&self) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend
-        let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
+        let dest_path = self.config.esp_mountpoint.join(REL_DEST_PATH);
         let src_path = PathBuf::from(SRC_PATH);
 
         if !dest_path.exists() {
@@ -106,7 +102,7 @@ impl Kernel for GenericKernel {
 
     // Try to remove a kernel
     fn remove(&self) -> Result<()> {
-        let kernel_path = self.esp_mountpoint.join(REL_DEST_PATH);
+        let kernel_path = self.config.esp_mountpoint.join(REL_DEST_PATH);
 
         println_with_prefix_and_fl!("remove_kernel", kernel = self.to_string());
         let vmlinux = kernel_path.join(&self.vmlinux);
@@ -121,6 +117,7 @@ impl Kernel for GenericKernel {
 
         println_with_prefix_and_fl!("remove_entry", kernel = self.to_string());
         let entry = self
+            .config
             .esp_mountpoint
             .join(format!("loader/entries/{}.conf", self.entry));
 
@@ -136,7 +133,7 @@ impl Kernel for GenericKernel {
     /// Create a systemd-boot entry config
     fn make_config(&self, force_write: bool) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend
-        let entries_path = self.esp_mountpoint.join(REL_ENTRY_PATH);
+        let entries_path = self.config.esp_mountpoint.join(REL_ENTRY_PATH);
 
         if !entries_path.exists() {
             print_block_with_fl!("info_path_not_exist");
@@ -168,11 +165,11 @@ impl Kernel for GenericKernel {
         // Generate entry config
         println_with_prefix_and_fl!("create_entry", kernel = self.to_string());
 
-        let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
+        let dest_path = self.config.esp_mountpoint.join(REL_DEST_PATH);
         let rel_dest_path = PathBuf::from(REL_DEST_PATH);
 
         let mut entry = EntryBuilder::new(&self.entry)
-            .title(format!("{} ({})", self.distro, self))
+            .title(format!("{} ({})", self.config.distro, self))
             .linux(rel_dest_path.join(&self.vmlinux))
             .build();
 
@@ -187,7 +184,7 @@ impl Kernel for GenericKernel {
         });
         entry
             .tokens
-            .push(Token::Options((*self.bootarg).to_owned()));
+            .push(Token::Options(self.config.bootarg.clone()));
         self.sbconf.borrow_mut().entries.push(entry);
         self.sbconf.borrow().write_entries()?;
 
@@ -197,7 +194,7 @@ impl Kernel for GenericKernel {
     // Set default entry
     fn set_default(&self) -> Result<()> {
         println_with_prefix_and_fl!("set_default", kernel = self.to_string());
-        self.sbconf.borrow_mut().config.default = Some(self.entry.to_owned());
+        self.sbconf.borrow_mut().config.default = Some(self.entry.clone());
         self.sbconf.borrow().write_config()?;
 
         Ok(())
@@ -248,7 +245,7 @@ impl Kernel for GenericKernel {
 impl GenericKernel {
     /// Parse a kernel filename
     pub fn parse(
-        config: &Config,
+        config: Rc<Config>,
         kernel_name: &str,
         sbconf: Rc<RefCell<SystemdBootConf>>,
     ) -> Result<Self> {
@@ -256,22 +253,19 @@ impl GenericKernel {
         let vmlinux = config.vmlinux.replace("{VERSION}", kernel_name);
         let initrd = config.initrd.replace("{VERSION}", kernel_name);
         let entry = kernel_name.to_owned();
-        sbconf.borrow_mut().load_current()?;
 
         Ok(Self {
             version,
             vmlinux,
             initrd,
-            distro: config.distro.clone(),
-            esp_mountpoint: config.esp_mountpoint.clone(),
             entry,
-            bootarg: config.bootarg.clone(),
+            config,
             sbconf,
         })
     }
 
     /// Generate a sorted vector of kernel filenames
-    pub fn list(config: &Config, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<Vec<Rc<Self>>> {
+    pub fn list(config: Rc<Config>, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<Vec<Rc<Self>>> {
         // read /usr/lib/modules to get kernel filenames
         let mut kernels = Vec::new();
 
@@ -286,7 +280,7 @@ impl GenericKernel {
                 && dirpath.join("modules.order").exists()
                 && dirpath.join("modules.builtin").exists()
             {
-                match Self::parse(config, &dirname, sbconf.clone()) {
+                match Self::parse(config.clone(), &dirname, sbconf.clone()) {
                     Ok(k) => kernels.push(Rc::new(k)),
                     Err(_) => {
                         println_with_prefix_and_fl!("skip_unidentified_kernel", kernel = dirname);
@@ -306,7 +300,7 @@ impl GenericKernel {
 
     /// Generate installed kernel list
     pub fn list_installed(
-        config: &Config,
+        config: Rc<Config>,
         sbconf: Rc<RefCell<SystemdBootConf>>,
     ) -> Result<Vec<Rc<Self>>> {
         let mut installed_kernels = Vec::new();
@@ -328,7 +322,11 @@ impl GenericKernel {
                         .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
                         .as_str();
 
-                    installed_kernels.push(Rc::new(Self::parse(config, version, sbconf.clone())?));
+                    installed_kernels.push(Rc::new(Self::parse(
+                        config.clone(),
+                        version,
+                        sbconf.clone(),
+                    )?));
                 }
             }
         }
