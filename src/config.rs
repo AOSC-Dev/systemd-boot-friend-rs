@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use console::style;
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, rc::Rc};
 use textwrap::{wrap, Options, WordSeparator, WordSplitter};
 
 use crate::{fl, print_block_with_fl, println_with_prefix, println_with_prefix_and_fl};
@@ -11,18 +11,18 @@ const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const MOUNTS: &str = "/proc/mounts";
 const CMDLINE: &str = "/proc/cmdline";
 
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
     #[serde(rename = "VMLINUX", alias = "VMLINUZ")]
     pub vmlinux: String,
     #[serde(rename = "INITRD")]
     pub initrd: String,
     #[serde(rename = "DISTRO")]
-    pub distro: String,
+    pub distro: Rc<String>,
     #[serde(rename = "ESP_MOUNTPOINT")]
-    pub esp_mountpoint: PathBuf,
+    pub esp_mountpoint: Rc<PathBuf>,
     #[serde(rename = "BOOTARG")]
-    pub bootarg: String,
+    pub bootarg: Rc<String>,
 }
 
 impl Default for Config {
@@ -30,9 +30,9 @@ impl Default for Config {
         Config {
             vmlinux: "vmlinuz-{VERSION}".to_owned(),
             initrd: "initramfs-{VERSION}.img".to_owned(),
-            distro: "Linux".to_owned(),
-            esp_mountpoint: PathBuf::from("/efi"),
-            bootarg: String::new(),
+            distro: Rc::new("Linux".to_owned()),
+            esp_mountpoint: Rc::new(PathBuf::from("/efi")),
+            bootarg: Rc::new(String::new()),
         }
     }
 }
@@ -122,7 +122,7 @@ impl Config {
                 .default(true)
                 .interact()?
             {
-                self.bootarg = current_bootarg;
+                self.bootarg = Rc::new(current_bootarg);
                 self.write()?;
             } else {
                 print_block_with_fl!("current_root", root = root.as_str());
@@ -132,7 +132,7 @@ impl Config {
                     .default(true)
                     .interact()?
                 {
-                    self.bootarg = format!("root={} rw", root);
+                    self.bootarg = Rc::new(format!("root={} rw", root));
                 } else {
                     bail!(fl!("edit_bootarg", config = CONF_PATH));
                 }
