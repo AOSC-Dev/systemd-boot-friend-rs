@@ -235,16 +235,13 @@ fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>]) {
 
 /// Ask for the timeout of systemd-boot boot menu
 fn ask_set_timeout(timeout: Option<u32>, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<()> {
-    if let Some(t) = timeout {
-        sbconf.borrow_mut().config.timeout = Some(t);
-    } else {
-        sbconf.borrow_mut().config.timeout = Some(
-            Input::with_theme(&ColorfulTheme::default())
-                .with_prompt(fl!("input_timeout"))
-                .default(5u32)
-                .interact()?,
-        );
-    }
+    sbconf.borrow_mut().config.timeout = timeout.or_else(|| {
+        Input::with_theme(&ColorfulTheme::default())
+            .with_prompt(fl!("input_timeout"))
+            .default(5u32)
+            .interact()
+            .ok()
+    });
     sbconf.borrow().write_config()?;
 
     Ok(())
