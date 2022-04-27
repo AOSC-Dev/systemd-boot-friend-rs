@@ -6,6 +6,7 @@ use libsdbootconf::{
 };
 use regex::Regex;
 use std::{cell::RefCell, cmp::Ordering, fmt, fs, path::PathBuf, rc::Rc};
+use std::fmt::Display;
 
 use super::{file_copy, Kernel, REL_ENTRY_PATH};
 use crate::{
@@ -62,6 +63,11 @@ impl fmt::Display for GenericKernel {
     }
 }
 
+#[inline]
+fn warn<O: Display, M: Display>(object: O, message: M) {
+    eprintln!("Warning: {}: {}", object, message);
+}
+
 impl Kernel for GenericKernel {
     /// Install a specific kernel to the esp using the given kernel filename
     fn install(&self) -> Result<()> {
@@ -113,10 +119,10 @@ impl Kernel for GenericKernel {
         let initrd = kernel_path.join(&self.initrd);
 
         fs::remove_file(&vmlinux)
-            .map_err(|x| eprintln!("WARNING: {}: {}", &vmlinux.display(), x))
+            .map_err(|x| warn(&vmlinux.display(), x))
             .ok();
         fs::remove_file(&initrd)
-            .map_err(|x| eprintln!("WARNING: {}: {}", &initrd.display(), x))
+            .map_err(|x| warn(&initrd.display(), x))
             .ok();
 
         println_with_prefix_and_fl!("remove_entry", kernel = self.to_string());
@@ -125,7 +131,7 @@ impl Kernel for GenericKernel {
             .join(format!("loader/entries/{}.conf", self.entry));
 
         fs::remove_file(&entry)
-            .map_err(|x| eprintln!("WARNING: {}: {}", &entry.display(), x))
+            .map_err(|x| warn(&entry.display(), x))
             .ok();
 
         self.remove_default()?;
@@ -256,7 +262,6 @@ impl GenericKernel {
         let vmlinux = config.vmlinux.replace("{VERSION}", kernel_name);
         let initrd = config.initrd.replace("{VERSION}", kernel_name);
         let entry = kernel_name.to_owned();
-        sbconf.borrow_mut().load_current()?;
 
         Ok(Self {
             version,
@@ -279,7 +284,7 @@ impl GenericKernel {
             let dirname = f?
                 .file_name()
                 .into_string()
-                .map_err(|s| anyhow!("fail to parse directory name: {:?}", s))?;
+                .map_err(|s| anyhow!("{} {:?}", fl!("invalid_dirname"), s))?;
             let dirpath = PathBuf::from(MODULES_PATH).join(&dirname);
 
             if dirpath.join("modules.dep").exists()
