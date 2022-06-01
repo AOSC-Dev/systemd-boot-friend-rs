@@ -198,8 +198,9 @@ impl Kernel for GenericKernel {
             });
             entry.tokens.push(Token::Options(bootarg.to_owned()));
             self.sbconf.borrow_mut().entries.push(entry);
-            self.sbconf.borrow().write_entries()?;
         }
+
+        self.sbconf.borrow().write_entries()?;
 
         Ok(())
     }
@@ -207,7 +208,7 @@ impl Kernel for GenericKernel {
     // Set default entry
     fn set_default(&self) -> Result<()> {
         println_with_prefix_and_fl!("set_default", kernel = self.to_string());
-        self.sbconf.borrow_mut().config.default = Some(self.entry.to_owned() + "-default");
+        self.sbconf.borrow_mut().config.default = Some(self.entry.to_owned() + "-default.conf");
         self.sbconf.borrow().write_config()?;
 
         Ok(())
