@@ -5,8 +5,10 @@ use libsdbootconf::{
     SystemdBootConf,
 };
 use regex::Regex;
-use std::{cell::RefCell, cmp::Ordering, fmt, fs, path::PathBuf, rc::Rc};
-use std::fmt::Display;
+use std::{
+    cell::RefCell, cmp::Ordering, collections::HashMap, fmt, fmt::Display, fs, path::PathBuf,
+    rc::Rc,
+};
 
 use super::{file_copy, Kernel, REL_ENTRY_PATH};
 use crate::{
@@ -27,7 +29,7 @@ pub struct GenericKernel {
     distro: Rc<String>,
     esp_mountpoint: Rc<PathBuf>,
     entry: String,
-    bootarg: Rc<String>,
+    bootarg: Rc<RefCell<HashMap<String, String>>>,
     sbconf: Rc<RefCell<SystemdBootConf>>,
 }
 
@@ -126,13 +128,15 @@ impl Kernel for GenericKernel {
             .ok();
 
         println_with_prefix_and_fl!("remove_entry", kernel = self.to_string());
-        let entry = self
-            .esp_mountpoint
-            .join(format!("loader/entries/{}.conf", self.entry));
+        for profile in self.bootarg.borrow().keys() {
+            let entry = self
+                .esp_mountpoint
+                .join(format!("loader/entries/{}-{}.conf", self.entry, profile.replace(' ', "_")));
 
-        fs::remove_file(&entry)
-            .map_err(|x| warn(&entry.display(), x))
-            .ok();
+            fs::remove_file(&entry)
+                .map_err(|x| warn(&entry.display(), x))
+                .ok();
+        }
 
         self.remove_default()?;
 
@@ -177,25 +181,25 @@ impl Kernel for GenericKernel {
         let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
         let rel_dest_path = PathBuf::from(REL_DEST_PATH);
 
-        let mut entry = EntryBuilder::new(&self.entry)
-            .title(format!("{} ({})", self.distro, self))
-            .linux(rel_dest_path.join(&self.vmlinux))
-            .build();
+        for (profile, bootarg) in self.bootarg.borrow().iter() {
+            let mut entry = EntryBuilder::new(format!("{}-{}", self.entry, profile.replace(' ', "_")))
+                .title(format!("{} ({}) ({})", self.distro, self, profile))
+                .linux(rel_dest_path.join(&self.vmlinux))
+                .build();
 
-        dest_path
-            .join(UCODE)
-            .exists()
-            .then(|| entry.tokens.push(Token::Initrd(rel_dest_path.join(UCODE))));
-        dest_path.join(&self.initrd).exists().then(|| {
-            entry
-                .tokens
-                .push(Token::Initrd(rel_dest_path.join(&self.initrd)))
-        });
-        entry
-            .tokens
-            .push(Token::Options((*self.bootarg).to_owned()));
-        self.sbconf.borrow_mut().entries.push(entry);
-        self.sbconf.borrow().write_entries()?;
+            dest_path
+                .join(UCODE)
+                .exists()
+                .then(|| entry.tokens.push(Token::Initrd(rel_dest_path.join(UCODE))));
+            dest_path.join(&self.initrd).exists().then(|| {
+                entry
+                    .tokens
+                    .push(Token::Initrd(rel_dest_path.join(&self.initrd)))
+            });
+            entry.tokens.push(Token::Options((*bootarg).to_owned()));
+            self.sbconf.borrow_mut().entries.push(entry);
+            self.sbconf.borrow().write_entries()?;
+        }
 
         Ok(())
     }
@@ -203,7 +207,7 @@ impl Kernel for GenericKernel {
     // Set default entry
     fn set_default(&self) -> Result<()> {
         println_with_prefix_and_fl!("set_default", kernel = self.to_string());
-        self.sbconf.borrow_mut().config.default = Some(self.entry.to_owned());
+        self.sbconf.borrow_mut().config.default = Some(self.entry.to_owned() + "-default");
         self.sbconf.borrow().write_config()?;
 
         Ok(())
@@ -211,7 +215,7 @@ impl Kernel for GenericKernel {
 
     // Remove default entry
     fn remove_default(&self) -> Result<()> {
-        if self.sbconf.borrow().config.default.as_ref() == Some(&self.entry) {
+        if self.sbconf.borrow().config.default == Some(format!("{}-default", self.entry)) {
             println_with_prefix_and_fl!("remove_default", kernel = self.to_string());
             self.sbconf.borrow_mut().config.default = None;
             self.sbconf.borrow().write_config()?;

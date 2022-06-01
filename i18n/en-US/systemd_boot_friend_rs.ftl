@@ -16,6 +16,7 @@ skip_unidentified_kernel = Skipping unidentified kernel {$kernel} ...
 no_space = No space left on device
 edit_bootarg = Please use your favorite text editor to edit `BOOTARG=` entry in {$config}
 invalid_dirname = Invalid directory name:
+require_default = Require a boot argument profile named "default" in {$conf_path}
 
 create_folder = Creating folder structure for friend ...
 note_copy_files = Note: systemd-boot-friend will copy Kernel file(s) to your EFI System Partition

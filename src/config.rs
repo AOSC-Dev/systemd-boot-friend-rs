@@ -2,7 +2,7 @@ use anyhow::{anyhow, bail, Result};
 use console::style;
 use dialoguer::{theme::ColorfulTheme, Confirm};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, fs, path::PathBuf, rc::Rc};
 use textwrap::{wrap, Options, WordSeparator, WordSplitter};
 
 use crate::{fl, print_block_with_fl, println_with_prefix, println_with_prefix_and_fl};
@@ -22,7 +22,7 @@ pub struct Config {
     #[serde(rename = "ESP_MOUNTPOINT")]
     pub esp_mountpoint: Rc<PathBuf>,
     #[serde(rename = "BOOTARG")]
-    pub bootarg: Rc<String>,
+    pub bootarg: Rc<RefCell<HashMap<String, String>>>,
 }
 
 impl Default for Config {
@@ -32,7 +32,7 @@ impl Default for Config {
             initrd: "initramfs-{VERSION}.img".to_owned(),
             distro: Rc::new("Linux".to_owned()),
             esp_mountpoint: Rc::new(PathBuf::from("/efi")),
-            bootarg: Rc::new(String::new()),
+            bootarg: Rc::new(RefCell::new(HashMap::new())),
         }
     }
 }
@@ -79,7 +79,10 @@ impl Config {
                     config.write()?;
                 }
 
-                if config.bootarg.is_empty() {
+                if let None = config.bootarg.borrow().get("default") {
+                    return Err(anyhow!(fl!("require_default", conf_path = CONF_PATH)));
+                }
+                if config.bootarg.borrow().is_empty() {
                     config.fill_empty_bootarg()?;
                 }
 
@@ -122,7 +125,9 @@ impl Config {
                 .default(true)
                 .interact()?
             {
-                self.bootarg = Rc::new(current_bootarg);
+                self.bootarg
+                    .borrow_mut()
+                    .insert("default".to_owned(), current_bootarg);
                 self.write()?;
             } else {
                 print_block_with_fl!("current_root", root = root.as_str());
@@ -132,7 +137,9 @@ impl Config {
                     .default(true)
                     .interact()?
                 {
-                    self.bootarg = Rc::new(format!("root={} rw", root));
+                    self.bootarg
+                        .borrow_mut()
+                        .insert("default".to_owned(), format!("root={} rw", root));
                 } else {
                     bail!(fl!("edit_bootarg", config = CONF_PATH));
                 }
