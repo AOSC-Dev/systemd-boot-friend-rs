@@ -29,7 +29,7 @@ pub struct GenericKernel {
     distro: Rc<String>,
     esp_mountpoint: Rc<PathBuf>,
     entry: String,
-    bootarg: Rc<RefCell<HashMap<String, String>>>,
+    bootargs: Rc<RefCell<HashMap<String, String>>>,
     sbconf: Rc<RefCell<SystemdBootConf>>,
 }
 
@@ -41,7 +41,7 @@ impl PartialEq for GenericKernel {
             && self.distro == other.distro
             && self.esp_mountpoint == other.esp_mountpoint
             && self.entry == other.entry
-            && self.bootarg == other.bootarg
+            && self.bootargs == other.bootargs
     }
 }
 
@@ -128,7 +128,7 @@ impl Kernel for GenericKernel {
             .ok();
 
         println_with_prefix_and_fl!("remove_entry", kernel = self.to_string());
-        for profile in self.bootarg.borrow().keys() {
+        for profile in self.bootargs.borrow().keys() {
             let entry = self
                 .esp_mountpoint
                 .join(format!("loader/entries/{}-{}.conf", self.entry, profile.replace(' ', "_")));
@@ -181,7 +181,7 @@ impl Kernel for GenericKernel {
         let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
         let rel_dest_path = PathBuf::from(REL_DEST_PATH);
 
-        for (profile, bootarg) in self.bootarg.borrow().iter() {
+        for (profile, bootarg) in self.bootargs.borrow().iter() {
             let mut entry = EntryBuilder::new(format!("{}-{}", self.entry, profile.replace(' ', "_")))
                 .title(format!("{} ({}) ({})", self.distro, self, profile))
                 .linux(rel_dest_path.join(&self.vmlinux))
@@ -196,7 +196,7 @@ impl Kernel for GenericKernel {
                     .tokens
                     .push(Token::Initrd(rel_dest_path.join(&self.initrd)))
             });
-            entry.tokens.push(Token::Options((*bootarg).to_owned()));
+            entry.tokens.push(Token::Options(bootarg.to_owned()));
             self.sbconf.borrow_mut().entries.push(entry);
             self.sbconf.borrow().write_entries()?;
         }
@@ -274,7 +274,7 @@ impl GenericKernel {
             distro: config.distro.clone(),
             esp_mountpoint: config.esp_mountpoint.clone(),
             entry,
-            bootarg: config.bootarg.clone(),
+            bootargs: config.bootargs.clone(),
             sbconf,
         })
     }

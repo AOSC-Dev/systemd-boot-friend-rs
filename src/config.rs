@@ -22,7 +22,9 @@ pub struct Config {
     #[serde(rename = "ESP_MOUNTPOINT")]
     pub esp_mountpoint: Rc<PathBuf>,
     #[serde(rename = "BOOTARG")]
-    pub bootarg: Rc<RefCell<HashMap<String, String>>>,
+    bootarg: Option<String>,  // for compatibility
+    #[serde(rename = "BOOTARGS", default)]
+    pub bootargs: Rc<RefCell<HashMap<String, String>>>,
 }
 
 impl Default for Config {
@@ -32,7 +34,8 @@ impl Default for Config {
             initrd: "initramfs-{VERSION}.img".to_owned(),
             distro: Rc::new("Linux".to_owned()),
             esp_mountpoint: Rc::new(PathBuf::from("/efi")),
-            bootarg: Rc::new(RefCell::new(HashMap::new())),
+            bootarg: None,
+            bootargs: Rc::new(RefCell::new(HashMap::new())),
         }
     }
 }
@@ -79,11 +82,17 @@ impl Config {
                     config.write()?;
                 }
 
-                if let None = config.bootarg.borrow().get("default") {
-                    return Err(anyhow!(fl!("require_default", conf_path = CONF_PATH)));
+                // For compatibility
+                if let Some(ref b) = config.bootarg {
+                    config.bootargs.borrow_mut().insert("default".to_owned(), b.to_owned());
+                    config.bootarg = None;
+                    config.write()?;
                 }
-                if config.bootarg.borrow().is_empty() {
-                    config.fill_empty_bootarg()?;
+
+                if config.bootargs.borrow().is_empty() {
+                    config.fill_empty_bootargs()?;
+                } else if config.bootargs.borrow().get("default").is_none() {
+                    return Err(anyhow!(fl!("require_default", conf_path = CONF_PATH)));
                 }
 
                 Ok(config)
@@ -97,7 +106,7 @@ impl Config {
     }
 
     /// Try to fill an empty BOOTARG option in Config
-    fn fill_empty_bootarg(&mut self) -> Result<()> {
+    fn fill_empty_bootargs(&mut self) -> Result<()> {
         print_block_with_fl!("notice_empty_bootarg");
 
         if Confirm::with_theme(&ColorfulTheme::default())
@@ -125,7 +134,7 @@ impl Config {
                 .default(true)
                 .interact()?
             {
-                self.bootarg
+                self.bootargs
                     .borrow_mut()
                     .insert("default".to_owned(), current_bootarg);
                 self.write()?;
@@ -137,7 +146,7 @@ impl Config {
                     .default(true)
                     .interact()?
                 {
-                    self.bootarg
+                    self.bootargs
                         .borrow_mut()
                         .insert("default".to_owned(), format!("root={} rw", root));
                 } else {
