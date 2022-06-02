@@ -129,9 +129,11 @@ impl Kernel for GenericKernel {
 
         println_with_prefix_and_fl!("remove_entry", kernel = self.to_string());
         for profile in self.bootargs.borrow().keys() {
-            let entry = self
-                .esp_mountpoint
-                .join(format!("loader/entries/{}-{}.conf", self.entry, profile.replace(' ', "_")));
+            let entry = self.esp_mountpoint.join(format!(
+                "loader/entries/{}-{}.conf",
+                self.entry,
+                profile.replace(' ', "_")
+            ));
 
             fs::remove_file(&entry)
                 .map_err(|x| warn(&entry.display(), x))
@@ -182,10 +184,11 @@ impl Kernel for GenericKernel {
         let rel_dest_path = PathBuf::from(REL_DEST_PATH);
 
         for (profile, bootarg) in self.bootargs.borrow().iter() {
-            let mut entry = EntryBuilder::new(format!("{}-{}", self.entry, profile.replace(' ', "_")))
-                .title(format!("{} ({}) ({})", self.distro, self, profile))
-                .linux(rel_dest_path.join(&self.vmlinux))
-                .build();
+            let mut entry =
+                EntryBuilder::new(format!("{}-{}", self.entry, profile.replace(' ', "_")))
+                    .title(format!("{} ({}) ({})", self.distro, self, profile))
+                    .linux(rel_dest_path.join(&self.vmlinux))
+                    .build();
 
             dest_path
                 .join(UCODE)
@@ -216,7 +219,7 @@ impl Kernel for GenericKernel {
 
     // Remove default entry
     fn remove_default(&self) -> Result<()> {
-        if self.sbconf.borrow().config.default == Some(format!("{}-default", self.entry)) {
+        if self.sbconf.borrow().config.default == Some(self.entry.to_owned() + "-default.conf") {
             println_with_prefix_and_fl!("remove_default", kernel = self.to_string());
             self.sbconf.borrow_mut().config.default = None;
             self.sbconf.borrow().write_config()?;
