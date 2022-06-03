@@ -13,17 +13,17 @@ const CMDLINE: &str = "/proc/cmdline";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
-    #[serde(rename = "VMLINUX", alias = "VMLINUZ")]
+    #[serde(alias = "VMLINUX", alias = "VMLINUZ")]
     pub vmlinux: String,
-    #[serde(rename = "INITRD")]
+    #[serde(alias = "INITRD")]
     pub initrd: String,
-    #[serde(rename = "DISTRO")]
+    #[serde(alias = "DISTRO")]
     pub distro: Rc<String>,
-    #[serde(rename = "ESP_MOUNTPOINT")]
+    #[serde(alias = "ESP_MOUNTPOINT")]
     pub esp_mountpoint: Rc<PathBuf>,
-    #[serde(rename = "BOOTARG")]
+    #[serde(alias = "BOOTARG")]
     bootarg: Option<String>,  // for compatibility
-    #[serde(rename = "BOOTARGS", default)]
+    #[serde(alias = "BOOTARGS", default)]
     pub bootargs: Rc<RefCell<HashMap<String, String>>>,
 }
 
@@ -83,8 +83,8 @@ impl Config {
                 }
 
                 // For compatibility
-                if let Some(ref b) = config.bootarg {
-                    config.bootargs.borrow_mut().insert("default".to_owned(), b.to_owned());
+                if let Some(b) = config.bootarg {
+                    config.bootargs.borrow_mut().insert("default".to_owned(), b);
                     config.bootarg = None;
                     config.write()?;
                 }
