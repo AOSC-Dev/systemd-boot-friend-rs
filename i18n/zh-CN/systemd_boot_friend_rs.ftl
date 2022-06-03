@@ -15,6 +15,7 @@ skip_unidentified_kernel = 已跳过不明内核 {$kernel} ...
 no_space = 设备上没有空间
 edit_bootarg = 请使用任意文本编辑器编辑 {$config} 中的 `BOOTARG=` 条目
 invalid_dirname = 目录名不正确：
+require_default = {$conf_path} 中必须包含 "default" （默认）启动参数配置
 
 create_folder = 正在建立 friend 目录结构...
 note_copy_files = 注意：systemd-boot-friend 将把内核文件复制到您的 EFI 系统分区

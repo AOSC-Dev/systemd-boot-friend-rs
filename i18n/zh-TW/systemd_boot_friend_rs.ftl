@@ -15,6 +15,7 @@ skip_unidentified_kernel = 已跳過不明核心 {$kernel} ...
 no_space = 裝置上已無多餘空間
 edit_bootarg = 請使用任意文字編輯器編輯 {$config} 中的 `BOOTARG=` 項目
 invalid_dirname = 目錄名稱不正確：
+require_default = {$conf_path} 中必須包含 "default" （預設）開機引數設定
 
 create_folder = 正在建立 friend 資料夾結構...
 note_copy_files = 注意：systemd-boot-friend 將把核心檔案複製到您的 EFI 系統分割區
