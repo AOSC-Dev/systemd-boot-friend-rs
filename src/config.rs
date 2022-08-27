@@ -22,7 +22,7 @@ pub struct Config {
     #[serde(alias = "ESP_MOUNTPOINT")]
     pub esp_mountpoint: Rc<PathBuf>,
     #[serde(alias = "BOOTARG")]
-    bootarg: Option<String>,  // for compatibility
+    bootarg: Option<String>, // for compatibility
     #[serde(alias = "BOOTARGS", default)]
     pub bootargs: Rc<RefCell<HashMap<String, String>>>,
 }
@@ -109,53 +109,55 @@ impl Config {
     fn fill_empty_bootargs(&mut self) -> Result<()> {
         print_block_with_fl!("notice_empty_bootarg");
 
-        if Confirm::with_theme(&ColorfulTheme::default())
+        if !Confirm::with_theme(&ColorfulTheme::default())
             .with_prompt(fl!("ask_empty_bootarg"))
             .default(true)
             .interact()?
         {
-            let current_bootarg = String::from_utf8(fs::read(CMDLINE)?)?;
+            return Ok(());
+        }
+
+        let current_bootarg = String::from_utf8(fs::read(CMDLINE)?)?;
+
+        print_block_with_fl!("current_bootarg");
+
+        // print bootarg (kernel command line), wrap at col 80
+        for line in wrap(
+            &current_bootarg,
+            Options::new(80)
+                .word_separator(WordSeparator::AsciiSpace)
+                .word_splitter(WordSplitter::NoHyphenation),
+        ) {
+            eprintln!("{}", style(line).bold());
+        }
+
+        if Confirm::with_theme(&ColorfulTheme::default())
+            .with_prompt(fl!("ask_current_bootarg"))
+            .default(true)
+            .interact()?
+        {
+            self.bootargs
+                .borrow_mut()
+                .insert("default".to_owned(), current_bootarg);
+        } else {
             let root = detect_root_partition()?;
 
-            print_block_with_fl!("current_bootarg");
+            print_block_with_fl!("current_root", root = root.as_str());
 
-            // print bootarg (kernel command line), wrap at col 80
-            for line in wrap(
-                &current_bootarg,
-                Options::new(80)
-                    .word_separator(WordSeparator::AsciiSpace)
-                    .word_splitter(WordSplitter::NoHyphenation),
-            ) {
-                eprintln!("{}", style(line).bold());
-            }
-
-            if Confirm::with_theme(&ColorfulTheme::default())
-                .with_prompt(fl!("ask_current_bootarg"))
+            if !Confirm::with_theme(&ColorfulTheme::default())
+                .with_prompt(fl!("ask_current_root", root = root.as_str()))
                 .default(true)
                 .interact()?
             {
-                self.bootargs
-                    .borrow_mut()
-                    .insert("default".to_owned(), current_bootarg);
-                self.write()?;
-            } else {
-                print_block_with_fl!("current_root", root = root.as_str());
-
-                if Confirm::with_theme(&ColorfulTheme::default())
-                    .with_prompt(fl!("ask_current_root", root = root.as_str()))
-                    .default(true)
-                    .interact()?
-                {
-                    self.bootargs
-                        .borrow_mut()
-                        .insert("default".to_owned(), format!("root={} rw", root));
-                } else {
-                    bail!(fl!("edit_bootarg", config = CONF_PATH));
-                }
+                bail!(fl!("edit_bootarg", config = CONF_PATH));
             }
 
-            self.write()?;
+            self.bootargs
+                .borrow_mut()
+                .insert("default".to_owned(), format!("root={} rw", root));
         }
+
+        self.write()?;
 
         Ok(())
     }
