@@ -27,7 +27,7 @@ textwrap = "0.15"
 lazy_static = "1.4"
 regex = "1.5"
 nom = "7.1"
-libsdbootconf = "0.10"
+libsdbootconf = "0.11"
 same-file = "1"
 # i18n
 i18n-embed = { version = "0.13", features = ["fluent-system", "desktop-requester"]}

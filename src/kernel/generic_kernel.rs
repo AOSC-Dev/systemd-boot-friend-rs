@@ -5,10 +5,7 @@ use libsdbootconf::{
     SystemdBootConf,
 };
 use regex::Regex;
-use std::{
-    cell::RefCell, cmp::Ordering, collections::HashMap, fmt, fmt::Display, fs, path::PathBuf,
-    rc::Rc,
-};
+use std::{cell::RefCell, cmp::Ordering, collections::HashMap, fmt, fs, path::PathBuf, rc::Rc};
 
 use super::{file_copy, Kernel, REL_ENTRY_PATH};
 use crate::{
@@ -66,7 +63,7 @@ impl fmt::Display for GenericKernel {
 }
 
 #[inline]
-fn warn<O: Display, M: Display>(object: O, message: M) {
+fn warn<O: fmt::Display, M: fmt::Display>(object: O, message: M) {
     eprintln!("Warning: {}: {}", object, message);
 }
 
@@ -242,12 +239,24 @@ impl Kernel for GenericKernel {
 
     /// Check if the kernel is the default kernel
     #[inline]
-    fn is_default(&self) -> bool {
-        if let Some(default) = &self.sbconf.borrow().config.default {
-            default == &self.to_string()
-        } else {
-            false
+    fn is_default(&self) -> Result<bool> {
+        let entry = &self
+            .sbconf
+            .borrow()
+            .config
+            .default_entry(self.esp_mountpoint.join(REL_ENTRY_PATH))?;
+
+        if let Some(entry) = entry {
+            for token in entry.tokens.iter() {
+                if let Token::Linux(p) = token {
+                    if *p == *PathBuf::from(REL_DEST_PATH).join(&self.vmlinux) {
+                        return Ok(true);
+                    }
+                }
+            }
         }
+
+        Ok(false)
     }
 
     #[inline]

@@ -218,10 +218,10 @@ fn list_available<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) {
 }
 
 /// Print all the installed kernels
-fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>]) {
+fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>]) -> Result<()> {
     if !installed_kernels.is_empty() {
         for k in installed_kernels.iter() {
-            if k.is_default() {
+            if k.is_default()? {
                 print!("{} ", style("[*]").green());
             } else {
                 print!("[ ] ");
@@ -231,6 +231,8 @@ fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>]) {
         println!();
         println_with_fl!("note_list_installed");
     }
+
+    Ok(())
 }
 
 /// Ask for the timeout of systemd-boot boot menu
@@ -291,7 +293,7 @@ fn main() -> Result<()> {
             .iter()
             .try_for_each(|k| k.remove())?,
             SubCommands::ListAvailable => list_available(&kernels, &installed_kernels),
-            SubCommands::ListInstalled => list_installed(&installed_kernels),
+            SubCommands::ListInstalled => list_installed(&installed_kernels)?,
             SubCommands::SetDefault(args) => {
                 specify_or_select(
                     &config,
