@@ -263,8 +263,7 @@ fn main() -> Result<()> {
     }
 
     let sbconf = Rc::new(RefCell::new(
-        SystemdBootConf::load(&config.esp_mountpoint.join("loader/"))
-            .map_err(|_| anyhow!(fl!("info_path_not_exist")))?,
+        SystemdBootConf::load(&config.esp_mountpoint.join("loader/"))?
     ));
     let installed_kernels = GenericKernel::list_installed(&config, sbconf.clone())?;
     let kernels = GenericKernel::list(&config, sbconf.clone())?;

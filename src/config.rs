@@ -1,15 +1,12 @@
-use anyhow::{anyhow, bail, Result};
-use console::style;
-use dialoguer::{theme::ColorfulTheme, Confirm};
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, collections::HashMap, fs, path::PathBuf, rc::Rc};
-use textwrap::{wrap, Options, WordSeparator, WordSplitter};
 
-use crate::{fl, print_block_with_fl, println_with_prefix, println_with_prefix_and_fl};
+use crate::{fl, println_with_prefix, println_with_prefix_and_fl};
 
 const CONF_PATH: &str = "/etc/systemd-boot-friend.conf";
 const MOUNTS: &str = "/proc/mounts";
-const CMDLINE: &str = "/proc/cmdline";
+// const CMDLINE: &str = "/proc/cmdline";
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Config {
@@ -57,6 +54,33 @@ fn detect_root_partition() -> Result<String> {
     Ok(root_partition)
 }
 
+/// Fill the necessary root cmdline and rw cmdline params if they are missing
+fn fill_necessary_bootarg(bootarg: &str) -> Result<String> {
+    let mut has_root = false;
+    let mut has_rw = false;
+
+    for param in bootarg.split_whitespace() {
+        if param.starts_with("root=") {
+            has_root = true;
+        } else if param == "rw" || param == "ro" {
+            has_rw = true;
+        }
+    }
+
+    let mut filled_bootarg = String::from(bootarg.strip_suffix('\n').unwrap_or(bootarg));
+
+    if !has_root {
+        filled_bootarg.push_str(" root=");
+        filled_bootarg.push_str(&detect_root_partition()?)
+    }
+
+    if !has_rw {
+        filled_bootarg.push_str(" rw");
+    }
+
+    Ok(filled_bootarg)
+}
+
 impl Config {
     /// Write the current state to the configuration file
     fn write(&self) -> Result<()> {
@@ -89,10 +113,14 @@ impl Config {
                     config.write()?;
                 }
 
-                if config.bootargs.borrow().is_empty() {
-                    config.fill_empty_bootargs()?;
-                } else if config.bootargs.borrow().get("default").is_none() {
+                if config.bootargs.borrow().is_empty()
+                    || config.bootargs.borrow().get("default").is_none()
+                {
                     return Err(anyhow!(fl!("require_default", conf_path = CONF_PATH)));
+                }
+
+                for (_, bootarg) in config.bootargs.borrow_mut().iter_mut() {
+                    *bootarg = fill_necessary_bootarg(bootarg)?.trim().to_owned();
                 }
 
                 Ok(config)
@@ -105,60 +133,60 @@ impl Config {
         }
     }
 
-    /// Try to fill an empty BOOTARG option in Config
-    fn fill_empty_bootargs(&mut self) -> Result<()> {
-        print_block_with_fl!("notice_empty_bootarg");
-
-        if !Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt(fl!("ask_empty_bootarg"))
-            .default(true)
-            .interact()?
-        {
-            return Ok(());
-        }
-
-        let current_bootarg = String::from_utf8(fs::read(CMDLINE)?)?;
-
-        print_block_with_fl!("current_bootarg");
-
-        // print bootarg (kernel command line), wrap at col 80
-        for line in wrap(
-            &current_bootarg,
-            Options::new(80)
-                .word_separator(WordSeparator::AsciiSpace)
-                .word_splitter(WordSplitter::NoHyphenation),
-        ) {
-            eprintln!("{}", style(line).bold());
-        }
-
-        if Confirm::with_theme(&ColorfulTheme::default())
-            .with_prompt(fl!("ask_current_bootarg"))
-            .default(true)
-            .interact()?
-        {
-            self.bootargs
-                .borrow_mut()
-                .insert("default".to_owned(), current_bootarg);
-        } else {
-            let root = detect_root_partition()?;
-
-            print_block_with_fl!("current_root", root = root.as_str());
-
-            if !Confirm::with_theme(&ColorfulTheme::default())
-                .with_prompt(fl!("ask_current_root", root = root.as_str()))
-                .default(true)
-                .interact()?
-            {
-                bail!(fl!("edit_bootarg", config = CONF_PATH));
-            }
-
-            self.bootargs
-                .borrow_mut()
-                .insert("default".to_owned(), format!("root={} rw", root));
-        }
-
-        self.write()?;
-
-        Ok(())
-    }
+    // /// Try to fill an empty BOOTARG option in Config
+    // fn fill_empty_bootargs(&mut self) -> Result<()> {
+    //     print_block_with_fl!("notice_empty_bootarg");
+    //
+    //     if !Confirm::with_theme(&ColorfulTheme::default())
+    //         .with_prompt(fl!("ask_empty_bootarg"))
+    //         .default(true)
+    //         .interact()?
+    //     {
+    //         return Ok(());
+    //     }
+    //
+    //     let current_bootarg = String::from_utf8(fs::read(CMDLINE)?)?;
+    //
+    //     print_block_with_fl!("current_bootarg");
+    //
+    //     // print bootarg (kernel command line), wrap at col 80
+    //     for line in wrap(
+    //         &current_bootarg,
+    //         Options::new(80)
+    //             .word_separator(WordSeparator::AsciiSpace)
+    //             .word_splitter(WordSplitter::NoHyphenation),
+    //     ) {
+    //         eprintln!("{}", style(line).bold());
+    //     }
+    //
+    //     if Confirm::with_theme(&ColorfulTheme::default())
+    //         .with_prompt(fl!("ask_current_bootarg"))
+    //         .default(true)
+    //         .interact()?
+    //     {
+    //         self.bootargs
+    //             .borrow_mut()
+    //             .insert("default".to_owned(), current_bootarg);
+    //     } else {
+    //         let root = detect_root_partition()?;
+    //
+    //         print_block_with_fl!("current_root", root = root.as_str());
+    //
+    //         if !Confirm::with_theme(&ColorfulTheme::default())
+    //             .with_prompt(fl!("ask_current_root", root = root.as_str()))
+    //             .default(true)
+    //             .interact()?
+    //         {
+    //             bail!(fl!("edit_bootarg", config = CONF_PATH));
+    //         }
+    //
+    //         self.bootargs
+    //             .borrow_mut()
+    //             .insert("default".to_owned(), format!("root={} rw", root));
+    //     }
+    //
+    //     self.write()?;
+    //
+    //     Ok(())
+    // }
 }
