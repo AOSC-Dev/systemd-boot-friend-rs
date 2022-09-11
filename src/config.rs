@@ -32,7 +32,10 @@ impl Default for Config {
             distro: Rc::new("Linux".to_owned()),
             esp_mountpoint: Rc::new(PathBuf::from("/efi")),
             bootarg: None,
-            bootargs: Rc::new(RefCell::new(HashMap::new())),
+            bootargs: Rc::new(RefCell::new(HashMap::from([(
+                "default".to_owned(),
+                String::new(),
+            )]))),
         }
     }
 }
@@ -116,7 +119,11 @@ impl Config {
                 if config.bootargs.borrow().is_empty()
                     || config.bootargs.borrow().get("default").is_none()
                 {
-                    return Err(anyhow!(fl!("require_default", conf_path = CONF_PATH)));
+                    config
+                        .bootargs
+                        .borrow_mut()
+                        .insert("default".to_owned(), String::new());
+                    config.write()?;
                 }
 
                 for (_, bootarg) in config.bootargs.borrow_mut().iter_mut() {
