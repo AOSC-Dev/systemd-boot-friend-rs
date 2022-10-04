@@ -1,4 +1,4 @@
-use clap::IntoApp;
+use clap::CommandFactory;
 use clap_complete::{generate_to, Shell};
 use std::{env, fs, io::Result};
 
