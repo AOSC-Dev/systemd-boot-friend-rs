@@ -15,10 +15,17 @@ pub enum SubCommands {
     /// Install all kernels and update boot entries
     #[command(display_order = 2)]
     Update,
+    /// Install the kernels specified
     #[command(display_order = 3)]
-    InstallKernel(Install),
+    InstallKernel {
+        targets: Vec<String>,
+        /// Force overwrite the entry config or not
+        #[arg(long, short)]
+        force: bool,
+    },
+    /// Remove the kernels specified
     #[command(display_order = 4)]
-    RemoveKernel(Remove),
+    RemoveKernel { targets: Vec<String> },
     /// List all available kernels
     #[command(display_order = 5)]
     ListAvailable,
@@ -28,35 +35,10 @@ pub enum SubCommands {
     /// Configure systemd-boot
     #[command(display_order = 7)]
     Config,
+    /// Set the default kernel
     #[command(display_order = 8)]
-    SetDefault(SetDefault),
+    SetDefault { target: Option<String> },
+    /// Set the boot menu timeout
     #[command(display_order = 9)]
-    SetTimeout(SetTimeout),
-}
-
-/// Install the kernels specified
-#[derive(Parser, Debug)]
-pub struct Install {
-    pub targets: Vec<String>,
-    /// Force overwrite the entry config or not
-    #[arg(long, short)]
-    pub force: bool,
-}
-
-/// Remove the kernels specified
-#[derive(Parser, Debug)]
-pub struct Remove {
-    pub targets: Vec<String>,
-}
-
-/// Set the default kernel
-#[derive(Parser, Debug)]
-pub struct SetDefault {
-    pub target: Option<String>,
-}
-
-/// Set the boot menu timeout
-#[derive(Parser, Debug)]
-pub struct SetTimeout {
-    pub timeout: Option<u32>,
+    SetTimeout { timeout: Option<u32> },
 }

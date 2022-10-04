@@ -263,7 +263,8 @@ fn main() -> Result<()> {
     }
 
     let sbconf = Rc::new(RefCell::new(
-        SystemdBootConf::load(&config.esp_mountpoint.join("loader/"))?
+        SystemdBootConf::load(&config.esp_mountpoint.join("loader/"))
+            .map_err(|_| anyhow!(fl!("info_path_not_exist")))?,
     ));
     let installed_kernels = GenericKernel::list_installed(&config, sbconf.clone())?;
     let kernels = GenericKernel::list(&config, sbconf.clone())?;
@@ -273,18 +274,14 @@ fn main() -> Result<()> {
         Some(s) => match s {
             SubCommands::Init => unreachable!(),
             SubCommands::Update => update(&kernels, &installed_kernels)?,
-            SubCommands::InstallKernel(args) => specify_or_multiselect(
+            SubCommands::InstallKernel { targets, force } => {
+                specify_or_multiselect(&config, &targets, &kernels, &fl!("select_install"), sbconf)?
+                    .iter()
+                    .try_for_each(|k| install(k.clone(), force))?
+            }
+            SubCommands::RemoveKernel { targets } => specify_or_multiselect(
                 &config,
-                &args.targets,
-                &kernels,
-                &fl!("select_install"),
-                sbconf,
-            )?
-            .iter()
-            .try_for_each(|k| install(k.clone(), args.force))?,
-            SubCommands::RemoveKernel(args) => specify_or_multiselect(
-                &config,
-                &args.targets,
+                &targets,
                 &installed_kernels,
                 &fl!("select_remove"),
                 sbconf,
@@ -293,18 +290,18 @@ fn main() -> Result<()> {
             .try_for_each(|k| k.remove())?,
             SubCommands::ListAvailable => list_available(&kernels, &installed_kernels),
             SubCommands::ListInstalled => list_installed(&installed_kernels)?,
-            SubCommands::SetDefault(args) => {
+            SubCommands::SetDefault { target } => {
                 specify_or_select(
                     &config,
-                    &args.target,
+                    &target,
                     &installed_kernels,
                     &fl!("select_default"),
                     sbconf,
                 )?
                 .set_default()?;
             }
-            SubCommands::SetTimeout(args) => {
-                ask_set_timeout(args.timeout, sbconf)?;
+            SubCommands::SetTimeout { timeout } => {
+                ask_set_timeout(timeout, sbconf)?;
             }
             SubCommands::Config => {
                 installed_kernels[Select::with_theme(&ColorfulTheme::default())
