@@ -131,7 +131,7 @@ fn init(config: &Config) -> Result<()> {
     }
 
     let sbconf = Rc::new(RefCell::new(SystemdBootConf::new(
-        &config.esp_mountpoint.join("loader/"),
+        config.esp_mountpoint.join("loader/"),
         libsdbootconf::Config::default(),
         Vec::new(),
     )));
@@ -263,7 +263,7 @@ fn main() -> Result<()> {
     }
 
     let sbconf = Rc::new(RefCell::new(
-        SystemdBootConf::load(&config.esp_mountpoint.join("loader/"))
+        SystemdBootConf::load(config.esp_mountpoint.join("loader/"))
             .map_err(|_| anyhow!(fl!("info_path_not_exist")))?,
     ));
     let installed_kernels = GenericKernel::list_installed(&config, sbconf.clone())?;

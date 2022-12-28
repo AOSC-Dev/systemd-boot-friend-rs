@@ -118,10 +118,10 @@ impl Kernel for GenericKernel {
         let initrd = kernel_path.join(&self.initrd);
 
         fs::remove_file(&vmlinux)
-            .map_err(|x| warn(&vmlinux.display(), x))
+            .map_err(|x| warn(vmlinux.display(), x))
             .ok();
         fs::remove_file(&initrd)
-            .map_err(|x| warn(&initrd.display(), x))
+            .map_err(|x| warn(initrd.display(), x))
             .ok();
 
         println_with_prefix_and_fl!("remove_entry", kernel = self.to_string());
@@ -133,7 +133,7 @@ impl Kernel for GenericKernel {
             ));
 
             fs::remove_file(&entry)
-                .map_err(|x| warn(&entry.display(), x))
+                .map_err(|x| warn(entry.display(), x))
                 .ok();
         }
 
@@ -164,7 +164,7 @@ impl Kernel for GenericKernel {
                 .default(false)
                 .interact()?;
 
-            if !overwrite {
+            if !&overwrite {
                 println_with_prefix_and_fl!("no_overwrite");
                 return Ok(());
             }
