@@ -1,7 +1,7 @@
 use anyhow::Result;
-use same_file::is_same_file;
-use std::{fmt::Display, fs, path::Path, rc::Rc, cell::RefCell};
 use libsdbootconf::SystemdBootConf;
+use same_file::is_same_file;
+use std::{cell::RefCell, fmt::Display, fs, path::Path, rc::Rc};
 
 use crate::config::Config;
 

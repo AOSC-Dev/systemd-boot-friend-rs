@@ -90,7 +90,7 @@ impl Kernel for GenericKernel {
             sbconf,
         })
     }
-    
+
     /// Install a specific kernel to the esp using the given kernel filename
     fn install(&self) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend

@@ -5,8 +5,8 @@ use libsdbootconf::SystemdBootConf;
 use std::{cell::RefCell, rc::Rc};
 
 use crate::{
-    fl, kernel::Kernel, print_block_with_fl, println_with_fl, println_with_prefix_and_fl, Config,
-    println_with_prefix
+    fl, kernel::Kernel, print_block_with_fl, println_with_fl, println_with_prefix,
+    println_with_prefix_and_fl, Config,
 };
 
 /// Manage kernels
