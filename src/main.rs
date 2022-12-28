@@ -1,8 +1,7 @@
 use anyhow::{anyhow, bail, Result};
 use clap::Parser;
-use console::style;
 use core::default::Default;
-use dialoguer::{theme::ColorfulTheme, Confirm, Input, MultiSelect, Select};
+use dialoguer::{theme::ColorfulTheme, Confirm, Input};
 use libsdbootconf::SystemdBootConf;
 use std::{
     cell::RefCell,
@@ -15,6 +14,7 @@ mod cli;
 mod config;
 mod i18n;
 mod kernel;
+mod kernel_manager;
 mod macros;
 mod version;
 
@@ -22,82 +22,10 @@ use cli::{Opts, SubCommands};
 use config::Config;
 use i18n::I18N_LOADER;
 use kernel::{generic_kernel::GenericKernel, Kernel};
+use kernel_manager::KernelManager;
 
 const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
 const SRC_PATH: &str = "/boot";
-
-/// Choose kernels using dialoguer
-#[inline]
-fn multiselect_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Vec<Rc<K>>> {
-    if kernels.is_empty() {
-        bail!(fl!("empty_list"));
-    }
-
-    // build dialoguer MultiSelect for kernel selection
-    Ok(MultiSelect::with_theme(&ColorfulTheme::default())
-        .with_prompt(prompt)
-        .items(kernels)
-        .interact()?
-        .iter()
-        .map(|n| kernels[*n].clone())
-        .collect())
-}
-
-/// Choose a kernel using dialoguer
-#[inline]
-fn select_kernel<K: Kernel>(kernels: &[Rc<K>], prompt: &str) -> Result<Rc<K>> {
-    if kernels.is_empty() {
-        bail!(fl!("empty_list"));
-    }
-
-    // build dialoguer MultiSelect for kernel selection
-    Ok(kernels[Select::with_theme(&ColorfulTheme::default())
-        .with_prompt(prompt)
-        .items(kernels)
-        .interact()?]
-    .clone())
-}
-
-fn specify_or_multiselect(
-    config: &Config,
-    arg: &[String],
-    kernels: &[Rc<GenericKernel>],
-    prompt: &str,
-    sbconf: Rc<RefCell<SystemdBootConf>>,
-) -> Result<Vec<Rc<GenericKernel>>> {
-    if arg.is_empty() {
-        // select the kernels when no target is given
-        multiselect_kernel(kernels, prompt)
-    } else {
-        let mut kernels = Vec::new();
-
-        for target in arg {
-            kernels.push(Rc::new(GenericKernel::parse(
-                config,
-                target,
-                sbconf.clone(),
-            )?));
-        }
-
-        Ok(kernels)
-    }
-}
-
-#[inline]
-fn specify_or_select(
-    config: &Config,
-    arg: &Option<String>,
-    kernels: &[Rc<GenericKernel>],
-    prompt: &str,
-    sbconf: Rc<RefCell<SystemdBootConf>>,
-) -> Result<Rc<GenericKernel>> {
-    match arg {
-        // parse the kernel name when a target is given
-        Some(n) => Ok(Rc::new(GenericKernel::parse(config, n, sbconf)?)),
-        // select the kernel when no target is given
-        None => select_kernel(kernels, prompt),
-    }
-}
 
 /// Initialize the default environment for friend
 fn init(config: &Config) -> Result<()> {
@@ -156,80 +84,9 @@ fn init(config: &Config) -> Result<()> {
         .default(false)
         .interact()?
     {
-        update(&kernels, &installed_kernels)?;
+        KernelManager::new(kernels, installed_kernels).update()?;
     } else {
         println_with_prefix_and_fl!("skip_update");
-    }
-
-    Ok(())
-}
-
-/// Update systemd-boot kernels and entries
-fn update<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) -> Result<()> {
-    println_with_prefix_and_fl!("update");
-    print_block_with_fl!("note_copy_files");
-
-    // Remove obsoleted kernels
-    installed_kernels.iter().try_for_each(|k| {
-        if !kernels.contains(k) {
-            k.remove()
-        } else {
-            Ok(())
-        }
-    })?;
-
-    // Install all kernels
-    kernels
-        .iter()
-        .try_for_each(|k| k.install_and_make_config(true))?;
-
-    // Set the newest kernel as default entry
-    if let Some(k) = kernels.first() {
-        k.set_default()?;
-    }
-
-    Ok(())
-}
-
-#[inline]
-fn install<K: Kernel>(kernel: Rc<K>, force: bool) -> Result<()> {
-    print_block_with_fl!("note_copy_files");
-
-    kernel.install_and_make_config(force)?;
-    kernel.ask_set_default()?;
-
-    Ok(())
-}
-
-/// Print all the available kernels
-fn list_available<K: Kernel>(kernels: &[Rc<K>], installed_kernels: &[Rc<K>]) {
-    if !kernels.is_empty() {
-        for k in kernels.iter() {
-            if installed_kernels.contains(k) {
-                print!("{} ", style("[*]").green());
-            } else {
-                print!("[ ] ");
-            }
-            println!("{}", k);
-        }
-        println!();
-        println_with_fl!("note_list_available");
-    }
-}
-
-/// Print all the installed kernels
-fn list_installed<K: Kernel>(installed_kernels: &[Rc<K>]) -> Result<()> {
-    if !installed_kernels.is_empty() {
-        for k in installed_kernels.iter() {
-            if k.is_default()? {
-                print!("{} ", style("[*]").green());
-            } else {
-                print!("[ ] ");
-            }
-            println!("{}", k);
-        }
-        println!();
-        println_with_fl!("note_list_installed");
     }
 
     Ok(())
@@ -269,47 +126,35 @@ fn main() -> Result<()> {
     let installed_kernels = GenericKernel::list_installed(&config, sbconf.clone())?;
     let kernels = GenericKernel::list(&config, sbconf.clone())?;
 
+    let kernel_manager = KernelManager::new(installed_kernels, kernels);
+
     // Switch table
     match matches.subcommands {
         Some(s) => match s {
             SubCommands::Init => unreachable!(),
-            SubCommands::Update => update(&kernels, &installed_kernels)?,
-            SubCommands::InstallKernel { targets, force } => {
-                specify_or_multiselect(&config, &targets, &kernels, &fl!("select_install"), sbconf)?
-                    .iter()
-                    .try_for_each(|k| install(k.clone(), force))?
-            }
-            SubCommands::RemoveKernel { targets } => specify_or_multiselect(
-                &config,
-                &targets,
-                &installed_kernels,
-                &fl!("select_remove"),
-                sbconf,
-            )?
-            .iter()
-            .try_for_each(|k| k.remove())?,
-            SubCommands::ListAvailable => list_available(&kernels, &installed_kernels),
-            SubCommands::ListInstalled => list_installed(&installed_kernels)?,
+            SubCommands::Update => kernel_manager.update()?,
+            SubCommands::InstallKernel { targets, force } => kernel_manager
+                .specify_or_multiselect(&config, &targets, &fl!("select_install"), sbconf)?
+                .iter()
+                .try_for_each(|k| KernelManager::install(k.clone(), force))?,
+            SubCommands::RemoveKernel { targets } => kernel_manager
+                .specify_or_multiselect(&config, &targets, &fl!("select_remove"), sbconf)?
+                .iter()
+                .try_for_each(|k| k.remove())?,
+            SubCommands::ListAvailable => kernel_manager.list_available(),
+            SubCommands::ListInstalled => kernel_manager.list_installed()?,
             SubCommands::SetDefault { target } => {
-                specify_or_select(
-                    &config,
-                    &target,
-                    &installed_kernels,
-                    &fl!("select_default"),
-                    sbconf,
-                )?
-                .set_default()?;
+                kernel_manager
+                    .specify_or_select(&config, &target, &fl!("select_default"), sbconf)?
+                    .set_default()?;
             }
             SubCommands::SetTimeout { timeout } => {
                 ask_set_timeout(timeout, sbconf)?;
             }
             SubCommands::Config => {
-                installed_kernels[Select::with_theme(&ColorfulTheme::default())
-                    .with_prompt(fl!("select_default"))
-                    .items(&installed_kernels)
-                    .default(0)
-                    .interact()?]
-                .set_default()?;
+                kernel_manager
+                    .select_installed_kernel(&fl!("select_default"))?
+                    .set_default()?;
                 ask_set_timeout(None, sbconf)?;
             }
         },

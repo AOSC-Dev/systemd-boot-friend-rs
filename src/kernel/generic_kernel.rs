@@ -68,6 +68,29 @@ fn warn<O: fmt::Display, M: fmt::Display>(object: O, message: M) {
 }
 
 impl Kernel for GenericKernel {
+    /// Parse a kernel filename
+    fn parse(
+        config: &Config,
+        kernel_name: &str,
+        sbconf: Rc<RefCell<SystemdBootConf>>,
+    ) -> Result<Self> {
+        let version = GenericVersion::parse(kernel_name)?;
+        let vmlinux = config.vmlinux.replace("{VERSION}", kernel_name);
+        let initrd = config.initrd.replace("{VERSION}", kernel_name);
+        let entry = kernel_name.to_owned();
+
+        Ok(Self {
+            version,
+            vmlinux,
+            initrd,
+            distro: config.distro.clone(),
+            esp_mountpoint: config.esp_mountpoint.clone(),
+            entry,
+            bootargs: config.bootargs.clone(),
+            sbconf,
+        })
+    }
+    
     /// Install a specific kernel to the esp using the given kernel filename
     fn install(&self) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend
@@ -269,29 +292,6 @@ impl Kernel for GenericKernel {
 }
 
 impl GenericKernel {
-    /// Parse a kernel filename
-    pub fn parse(
-        config: &Config,
-        kernel_name: &str,
-        sbconf: Rc<RefCell<SystemdBootConf>>,
-    ) -> Result<Self> {
-        let version = GenericVersion::parse(kernel_name)?;
-        let vmlinux = config.vmlinux.replace("{VERSION}", kernel_name);
-        let initrd = config.initrd.replace("{VERSION}", kernel_name);
-        let entry = kernel_name.to_owned();
-
-        Ok(Self {
-            version,
-            vmlinux,
-            initrd,
-            distro: config.distro.clone(),
-            esp_mountpoint: config.esp_mountpoint.clone(),
-            entry,
-            bootargs: config.bootargs.clone(),
-            sbconf,
-        })
-    }
-
     /// Generate a sorted vector of kernel filenames
     pub fn list(config: &Config, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<Vec<Rc<Self>>> {
         // read /usr/lib/modules to get kernel filenames

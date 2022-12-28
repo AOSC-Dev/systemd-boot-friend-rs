@@ -1,10 +1,18 @@
 use anyhow::Result;
 use same_file::is_same_file;
-use std::{fmt::Display, fs, path::Path};
+use std::{fmt::Display, fs, path::Path, rc::Rc, cell::RefCell};
+use libsdbootconf::SystemdBootConf;
+
+use crate::config::Config;
 
 const REL_ENTRY_PATH: &str = "loader/entries/";
 
 pub trait Kernel: Display + Clone + PartialEq {
+    fn parse(
+        config: &Config,
+        kernel_name: &str,
+        sbconf: Rc<RefCell<SystemdBootConf>>,
+    ) -> Result<Self>;
     fn install(&self) -> Result<()>;
     fn remove(&self) -> Result<()>;
     fn make_config(&self, force_write: bool) -> Result<()>;
