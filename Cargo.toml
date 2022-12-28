@@ -23,7 +23,7 @@ anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
 console = "0.15"
 dialoguer = "0.10"
-textwrap = "0.15"
+textwrap = "0.16"
 lazy_static = "1.4"
 regex = "1.5"
 nom = "7.1"
