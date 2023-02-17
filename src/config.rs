@@ -18,6 +18,8 @@ pub struct Config {
     pub distro: Rc<String>,
     #[serde(alias = "ESP_MOUNTPOINT")]
     pub esp_mountpoint: Rc<PathBuf>,
+    #[serde(alias = "KEEP")]
+    pub keep: Option<usize>,
     #[serde(alias = "BOOTARG")]
     bootarg: Option<String>, // for compatibility
     #[serde(alias = "BOOTARGS", default)]
@@ -31,6 +33,7 @@ impl Default for Config {
             initrd: "initramfs-{VERSION}.img".to_owned(),
             distro: Rc::new("Linux".to_owned()),
             esp_mountpoint: Rc::new(PathBuf::from("/efi")),
+            keep: None,
             bootarg: None,
             bootargs: Rc::new(RefCell::new(HashMap::from([(
                 "default".to_owned(),

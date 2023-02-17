@@ -106,12 +106,17 @@ impl<K: Kernel> KernelManager<K> {
     }
 
     /// Update systemd-boot kernels and entries
-    pub fn update(&self) -> Result<()> {
+    pub fn update(&self, config: &Config) -> Result<()> {
         println_with_prefix_and_fl!("update");
         print_block_with_fl!("note_copy_files");
 
+        let keep = config
+            .keep
+            .unwrap_or(self.kernels.len())
+            .min(self.kernels.len());
+
         // Remove obsoleted kernels
-        self.installed_kernels.iter().try_for_each(|k| {
+        self.installed_kernels.iter().take(keep).try_for_each(|k| {
             if !self.kernels.contains(k) {
                 k.remove()
             } else {
@@ -119,9 +124,15 @@ impl<K: Kernel> KernelManager<K> {
             }
         })?;
 
+        self.installed_kernels
+            .iter()
+            .skip(keep)
+            .try_for_each(|k| k.remove())?;
+
         // Install all kernels
         self.kernels
             .iter()
+            .take(keep)
             .try_for_each(|k| k.install_and_make_config(true))?;
 
         // Set the newest kernel as default entry

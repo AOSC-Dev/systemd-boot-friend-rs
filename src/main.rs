@@ -84,7 +84,7 @@ fn init(config: &Config) -> Result<()> {
         .default(false)
         .interact()?
     {
-        KernelManager::new(kernels, installed_kernels).update()?;
+        KernelManager::new(kernels, installed_kernels).update(config)?;
     } else {
         println_with_prefix_and_fl!("skip_update");
     }
@@ -126,13 +126,13 @@ fn main() -> Result<()> {
     let installed_kernels = GenericKernel::list_installed(&config, sbconf.clone())?;
     let kernels = GenericKernel::list(&config, sbconf.clone())?;
 
-    let kernel_manager = KernelManager::new(installed_kernels, kernels);
+    let kernel_manager = KernelManager::new(kernels, installed_kernels);
 
     // Switch table
     match matches.subcommands {
         Some(s) => match s {
-            SubCommands::Init => unreachable!(),
-            SubCommands::Update => kernel_manager.update()?,
+            SubCommands::Init => unreachable!(), // Handled above
+            SubCommands::Update => kernel_manager.update(&config)?,
             SubCommands::InstallKernel { targets, force } => kernel_manager
                 .specify_or_multiselect(&config, &targets, &fl!("select_install"), sbconf)?
                 .iter()
