@@ -97,9 +97,9 @@ impl Config {
 
     /// Read the configuration file
     pub fn read() -> Result<Self> {
-        match fs::read(CONF_PATH) {
+        match fs::read_to_string(CONF_PATH) {
             Ok(f) => {
-                let mut config: Config = toml::from_slice(&f)?;
+                let mut config: Config = toml::from_str(&f)?;
 
                 // Migrate from old configuration
                 let old_conf = "{VERSION}-{LOCALVERSION}";
