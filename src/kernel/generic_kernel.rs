@@ -35,10 +35,7 @@ impl PartialEq for GenericKernel {
         self.version == other.version
             && self.vmlinux == other.vmlinux
             && self.initrd == other.initrd
-            && self.distro == other.distro
-            && self.esp_mountpoint == other.esp_mountpoint
             && self.entry == other.entry
-            && self.bootargs == other.bootargs
     }
 }
 
