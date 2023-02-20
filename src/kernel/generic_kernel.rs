@@ -293,7 +293,7 @@ impl Kernel for GenericKernel {
 
 impl GenericKernel {
     /// Generate a sorted vector of kernel filenames
-    pub fn list(config: &Config, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<Vec<Rc<Self>>> {
+    pub fn list(config: &Config, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<Vec<Self>> {
         // read /usr/lib/modules to get kernel filenames
         let mut kernels = Vec::new();
 
@@ -309,7 +309,7 @@ impl GenericKernel {
                 && dirpath.join("modules.builtin").exists()
             {
                 match Self::parse(config, &dirname, sbconf.clone()) {
-                    Ok(k) => kernels.push(Rc::new(k)),
+                    Ok(k) => kernels.push(k),
                     Err(_) => {
                         println_with_prefix_and_fl!("skip_unidentified_kernel", kernel = dirname);
                     }
@@ -330,7 +330,7 @@ impl GenericKernel {
     pub fn list_installed(
         config: &Config,
         sbconf: Rc<RefCell<SystemdBootConf>>,
-    ) -> Result<Vec<Rc<Self>>> {
+    ) -> Result<Vec<Self>> {
         let mut installed_kernels = Vec::new();
 
         // Construct regex for the template
@@ -350,7 +350,7 @@ impl GenericKernel {
                         .ok_or_else(|| anyhow!(fl!("invalid_kernel_filename")))?
                         .as_str();
 
-                    installed_kernels.push(Rc::new(Self::parse(config, version, sbconf.clone())?));
+                    installed_kernels.push(Self::parse(config, version, sbconf.clone())?);
                 }
             }
         }

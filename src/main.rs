@@ -16,6 +16,7 @@ mod i18n;
 mod kernel;
 mod kernel_manager;
 mod macros;
+mod util;
 mod version;
 
 use cli::{Opts, SubCommands};
@@ -23,6 +24,7 @@ use config::Config;
 use i18n::I18N_LOADER;
 use kernel::{generic_kernel::GenericKernel, Kernel};
 use kernel_manager::KernelManager;
+use util::*;
 
 const REL_DEST_PATH: &str = "EFI/systemd-boot-friend/";
 const SRC_PATH: &str = "/boot";
@@ -84,7 +86,7 @@ fn init(config: &Config) -> Result<()> {
         .default(false)
         .interact()?
     {
-        KernelManager::new(kernels, installed_kernels).update(config)?;
+        KernelManager::new(&kernels, &installed_kernels).update(config)?;
     } else {
         println_with_prefix_and_fl!("skip_update");
     }
@@ -126,35 +128,44 @@ fn main() -> Result<()> {
     let installed_kernels = GenericKernel::list_installed(&config, sbconf.clone())?;
     let kernels = GenericKernel::list(&config, sbconf.clone())?;
 
-    let kernel_manager = KernelManager::new(kernels, installed_kernels);
+    let kernel_manager = KernelManager::new(&kernels, &installed_kernels);
 
     // Switch table
     match matches.subcommands {
         Some(s) => match s {
             SubCommands::Init => unreachable!(), // Handled above
             SubCommands::Update => kernel_manager.update(&config)?,
-            SubCommands::InstallKernel { targets, force } => kernel_manager
-                .specify_or_multiselect(&config, &targets, &fl!("select_install"), sbconf)?
-                .iter()
-                .try_for_each(|k| KernelManager::install(k.clone(), force))?,
-            SubCommands::RemoveKernel { targets } => kernel_manager
-                .specify_or_multiselect(&config, &targets, &fl!("select_remove"), sbconf)?
-                .iter()
-                .try_for_each(|k| k.remove())?,
+            SubCommands::InstallKernel { targets, force } => {
+                specify_or_multiselect(&kernels, &config, &targets, &fl!("select_install"), sbconf)?
+                    .iter()
+                    .try_for_each(|k| KernelManager::install(k, force))?
+            }
+            SubCommands::RemoveKernel { targets } => specify_or_multiselect(
+                &installed_kernels,
+                &config,
+                &targets,
+                &fl!("select_remove"),
+                sbconf,
+            )?
+            .iter()
+            .try_for_each(|k| k.remove())?,
             SubCommands::ListAvailable => kernel_manager.list_available(),
             SubCommands::ListInstalled => kernel_manager.list_installed()?,
             SubCommands::SetDefault { target } => {
-                kernel_manager
-                    .specify_or_select(&config, &target, &fl!("select_default"), sbconf)?
-                    .set_default()?;
+                specify_or_select(
+                    &installed_kernels,
+                    &config,
+                    &target,
+                    &fl!("select_default"),
+                    sbconf,
+                )?
+                .set_default()?;
             }
             SubCommands::SetTimeout { timeout } => {
                 ask_set_timeout(timeout, sbconf)?;
             }
             SubCommands::Config => {
-                kernel_manager
-                    .select_installed_kernel(&fl!("select_default"))?
-                    .set_default()?;
+                select_kernel(&installed_kernels, &fl!("select_default"))?.set_default()?;
                 ask_set_timeout(None, sbconf)?;
             }
         },
