@@ -38,4 +38,5 @@ where
     Ok(())
 }
 
+#[cfg(feature = "generic")]
 pub mod generic_kernel;

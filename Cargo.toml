@@ -39,5 +39,9 @@ unic-langid = "0.9"
 clap = "4.0"
 clap_complete = "4.0"
 
+[features]
+default = ["generic"]
+generic = []
+
 [profile.release]
 lto = true
