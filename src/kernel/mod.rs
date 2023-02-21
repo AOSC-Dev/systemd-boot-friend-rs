@@ -21,6 +21,8 @@ pub trait Kernel: Display + Clone + PartialEq {
     fn ask_set_default(&self) -> Result<()>;
     fn is_default(&self) -> Result<bool>;
     fn install_and_make_config(&self, force_write: bool) -> Result<()>;
+    fn list(config: &Config, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<Vec<Self>>;
+    fn list_installed(config: &Config, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<Vec<Self>>;
 }
 
 pub fn file_copy<P, Q>(src: P, dest: Q) -> Result<()>

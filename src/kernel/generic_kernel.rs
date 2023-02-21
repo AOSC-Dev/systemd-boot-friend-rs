@@ -286,11 +286,9 @@ impl Kernel for GenericKernel {
 
         Ok(())
     }
-}
 
-impl GenericKernel {
     /// Generate a sorted vector of kernel filenames
-    pub fn list(config: &Config, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<Vec<Self>> {
+    fn list(config: &Config, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<Vec<Self>> {
         // read /usr/lib/modules to get kernel filenames
         let mut kernels = Vec::new();
 
@@ -324,10 +322,7 @@ impl GenericKernel {
     }
 
     /// Generate installed kernel list
-    pub fn list_installed(
-        config: &Config,
-        sbconf: Rc<RefCell<SystemdBootConf>>,
-    ) -> Result<Vec<Self>> {
+    fn list_installed(config: &Config, sbconf: Rc<RefCell<SystemdBootConf>>) -> Result<Vec<Self>> {
         let mut installed_kernels = Vec::new();
 
         // Construct regex for the template

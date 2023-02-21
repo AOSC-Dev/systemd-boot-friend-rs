@@ -56,7 +56,7 @@ fn rel(input: &str) -> IResult<&str, u64> {
     map_res(preceded(tag("-"), take_until("-")), |x: &str| x.parse())(input)
 }
 
-impl Version<GenericVersion> for GenericVersion {
+impl Version for GenericVersion {
     fn parse(input: &str) -> Result<Self> {
         tuple((
             version_digit,        // Major

@@ -15,10 +15,10 @@ _sbf() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" \
-'-h[Print help information]' \
-'--help[Print help information]' \
-'-V[Print version information]' \
-'--version[Print version information]' \
+'-h[Print help]' \
+'--help[Print help]' \
+'-V[Print version]' \
+'--version[Print version]' \
 ":: :_sbf_commands" \
 "*::: :->systemd-boot-friend-rs" \
 && ret=0
@@ -30,61 +30,61 @@ _sbf() {
         case $line[1] in
             (init)
 _arguments "${_arguments_options[@]}" \
-'-h[Print help information]' \
-'--help[Print help information]' \
+'-h[Print help]' \
+'--help[Print help]' \
 && ret=0
 ;;
 (update)
 _arguments "${_arguments_options[@]}" \
-'-h[Print help information]' \
-'--help[Print help information]' \
+'-h[Print help]' \
+'--help[Print help]' \
 && ret=0
 ;;
 (install-kernel)
 _arguments "${_arguments_options[@]}" \
 '-f[Force overwrite the entry config or not]' \
 '--force[Force overwrite the entry config or not]' \
-'-h[Print help information]' \
-'--help[Print help information]' \
+'-h[Print help]' \
+'--help[Print help]' \
 '*::targets:' \
 && ret=0
 ;;
 (remove-kernel)
 _arguments "${_arguments_options[@]}" \
-'-h[Print help information]' \
-'--help[Print help information]' \
+'-h[Print help]' \
+'--help[Print help]' \
 '*::targets:' \
 && ret=0
 ;;
 (list-available)
 _arguments "${_arguments_options[@]}" \
-'-h[Print help information]' \
-'--help[Print help information]' \
+'-h[Print help]' \
+'--help[Print help]' \
 && ret=0
 ;;
 (list-installed)
 _arguments "${_arguments_options[@]}" \
-'-h[Print help information]' \
-'--help[Print help information]' \
+'-h[Print help]' \
+'--help[Print help]' \
 && ret=0
 ;;
 (config)
 _arguments "${_arguments_options[@]}" \
-'-h[Print help information]' \
-'--help[Print help information]' \
+'-h[Print help]' \
+'--help[Print help]' \
 && ret=0
 ;;
 (set-default)
 _arguments "${_arguments_options[@]}" \
-'-h[Print help information]' \
-'--help[Print help information]' \
+'-h[Print help]' \
+'--help[Print help]' \
 '::target:' \
 && ret=0
 ;;
 (set-timeout)
 _arguments "${_arguments_options[@]}" \
-'-h[Print help information]' \
-'--help[Print help information]' \
+'-h[Print help]' \
+'--help[Print help]' \
 '::timeout:' \
 && ret=0
 ;;
