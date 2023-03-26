@@ -199,6 +199,7 @@ impl Kernel for GenericKernel {
 
         let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
         let rel_dest_path = PathBuf::from(REL_DEST_PATH);
+        let mut entries = Vec::new();
 
         for (profile, bootarg) in self.bootargs.borrow().iter() {
             let mut entry =
@@ -217,9 +218,10 @@ impl Kernel for GenericKernel {
                     .push(Token::Initrd(rel_dest_path.join(&self.initrd)))
             });
             entry.tokens.push(Token::Options(bootarg.to_owned()));
-            self.sbconf.borrow_mut().entries.push(entry);
+            entries.push(entry);
         }
 
+        self.sbconf.borrow_mut().entries = entries;
         self.sbconf.borrow().write_entries()?;
 
         Ok(())
