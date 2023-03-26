@@ -866,7 +866,7 @@ dependencies = [
 
 [[package]]
 name = "systemd-boot-friend-rs"
-version = "0.25.1"
+version = "0.25.2"
 dependencies = [
  "anyhow",
  "clap",
