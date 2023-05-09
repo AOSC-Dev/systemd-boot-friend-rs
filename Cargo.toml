@@ -3,7 +3,7 @@ name = "systemd-boot-friend-rs"
 version = "0.25.2"
 license = "MIT"
 authors = ["Kaiyang Wu <origincode@aosc.io>"]
-edition = "2018"
+edition = "2021"
 description = "Kernel version manager for systemd-boot"
 repository = "https://github.com/AOSC-Dev/systemd-boot-friend-rs"
 homepage = "https://github.com/AOSC-Dev/systemd-boot-friend-rs"
@@ -36,7 +36,7 @@ rust-embed = "6.3"
 unic-langid = "0.9"
 
 [build-dependencies]
-clap = "4.0"
+clap = { version = "4.0", features = ["derive"] }
 clap_complete = "4.0"
 
 [features]
