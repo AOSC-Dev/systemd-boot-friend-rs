@@ -375,4 +375,4 @@ _sbf() {
     esac
 }
 
-complete -F _sbf -o bashdefault -o default sbf
+complete -F _sbf -o nosort -o bashdefault -o default sbf

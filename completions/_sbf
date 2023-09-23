@@ -277,4 +277,8 @@ _sbf__update_commands() {
     _describe -t commands 'sbf update commands' commands "$@"
 }
 
-_sbf "$@"
+if [ "$funcstack[1]" = "_sbf" ]; then
+    _sbf "$@"
+else
+    compdef _sbf sbf
+fi
