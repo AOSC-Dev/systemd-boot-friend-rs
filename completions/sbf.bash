@@ -12,65 +12,65 @@ _sbf() {
             ",$1")
                 cmd="sbf"
                 ;;
-            systemd__boot__friend__rs,config)
-                cmd="systemd__boot__friend__rs__config"
+            sbf,config)
+                cmd="sbf__config"
                 ;;
-            systemd__boot__friend__rs,help)
-                cmd="systemd__boot__friend__rs__help"
+            sbf,help)
+                cmd="sbf__help"
                 ;;
-            systemd__boot__friend__rs,init)
-                cmd="systemd__boot__friend__rs__init"
+            sbf,init)
+                cmd="sbf__init"
                 ;;
-            systemd__boot__friend__rs,install-kernel)
-                cmd="systemd__boot__friend__rs__install__kernel"
+            sbf,install-kernel)
+                cmd="sbf__install__kernel"
                 ;;
-            systemd__boot__friend__rs,list-available)
-                cmd="systemd__boot__friend__rs__list__available"
+            sbf,list-available)
+                cmd="sbf__list__available"
                 ;;
-            systemd__boot__friend__rs,list-installed)
-                cmd="systemd__boot__friend__rs__list__installed"
+            sbf,list-installed)
+                cmd="sbf__list__installed"
                 ;;
-            systemd__boot__friend__rs,remove-kernel)
-                cmd="systemd__boot__friend__rs__remove__kernel"
+            sbf,remove-kernel)
+                cmd="sbf__remove__kernel"
                 ;;
-            systemd__boot__friend__rs,set-default)
-                cmd="systemd__boot__friend__rs__set__default"
+            sbf,set-default)
+                cmd="sbf__set__default"
                 ;;
-            systemd__boot__friend__rs,set-timeout)
-                cmd="systemd__boot__friend__rs__set__timeout"
+            sbf,set-timeout)
+                cmd="sbf__set__timeout"
                 ;;
-            systemd__boot__friend__rs,update)
-                cmd="systemd__boot__friend__rs__update"
+            sbf,update)
+                cmd="sbf__update"
                 ;;
-            systemd__boot__friend__rs__help,config)
-                cmd="systemd__boot__friend__rs__help__config"
+            sbf__help,config)
+                cmd="sbf__help__config"
                 ;;
-            systemd__boot__friend__rs__help,help)
-                cmd="systemd__boot__friend__rs__help__help"
+            sbf__help,help)
+                cmd="sbf__help__help"
                 ;;
-            systemd__boot__friend__rs__help,init)
-                cmd="systemd__boot__friend__rs__help__init"
+            sbf__help,init)
+                cmd="sbf__help__init"
                 ;;
-            systemd__boot__friend__rs__help,install-kernel)
-                cmd="systemd__boot__friend__rs__help__install__kernel"
+            sbf__help,install-kernel)
+                cmd="sbf__help__install__kernel"
                 ;;
-            systemd__boot__friend__rs__help,list-available)
-                cmd="systemd__boot__friend__rs__help__list__available"
+            sbf__help,list-available)
+                cmd="sbf__help__list__available"
                 ;;
-            systemd__boot__friend__rs__help,list-installed)
-                cmd="systemd__boot__friend__rs__help__list__installed"
+            sbf__help,list-installed)
+                cmd="sbf__help__list__installed"
                 ;;
-            systemd__boot__friend__rs__help,remove-kernel)
-                cmd="systemd__boot__friend__rs__help__remove__kernel"
+            sbf__help,remove-kernel)
+                cmd="sbf__help__remove__kernel"
                 ;;
-            systemd__boot__friend__rs__help,set-default)
-                cmd="systemd__boot__friend__rs__help__set__default"
+            sbf__help,set-default)
+                cmd="sbf__help__set__default"
                 ;;
-            systemd__boot__friend__rs__help,set-timeout)
-                cmd="systemd__boot__friend__rs__help__set__timeout"
+            sbf__help,set-timeout)
+                cmd="sbf__help__set__timeout"
                 ;;
-            systemd__boot__friend__rs__help,update)
-                cmd="systemd__boot__friend__rs__help__update"
+            sbf__help,update)
+                cmd="sbf__help__update"
                 ;;
             *)
                 ;;
@@ -375,4 +375,8 @@ _sbf() {
     esac
 }
 
-complete -F _sbf -o nosort -o bashdefault -o default sbf
+if [[ "${BASH_VERSINFO[0]}" -eq 4 && "${BASH_VERSINFO[1]}" -ge 4 || "${BASH_VERSINFO[0]}" -gt 4 ]]; then
+    complete -F _sbf -o nosort -o bashdefault -o default sbf
+else
+    complete -F _sbf -o bashdefault -o default sbf
+fi
