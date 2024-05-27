@@ -31,9 +31,11 @@ impl<'a, K: Kernel> KernelManager<'a, K> {
             .unwrap_or(self.kernels.len())
             .min(self.kernels.len());
 
+        let to_be_installed = &self.kernels[..keep];
+
         // Remove obsoleted kernels
         self.installed_kernels.iter().take(keep).try_for_each(|k| {
-            if !self.kernels.contains(k) {
+            if !to_be_installed.contains(k) {
                 k.remove()
             } else {
                 Ok(())
