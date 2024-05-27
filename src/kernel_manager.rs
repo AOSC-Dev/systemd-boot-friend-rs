@@ -34,18 +34,13 @@ impl<'a, K: Kernel> KernelManager<'a, K> {
         let to_be_installed = &self.kernels[..keep];
 
         // Remove obsoleted kernels
-        self.installed_kernels.iter().take(keep).try_for_each(|k| {
+        self.installed_kernels.iter().try_for_each(|k| {
             if !to_be_installed.contains(k) {
                 k.remove()
             } else {
                 Ok(())
             }
         })?;
-
-        self.installed_kernels
-            .iter()
-            .skip(keep)
-            .try_for_each(|k| k.remove())?;
 
         // Install all kernels
         self.kernels
