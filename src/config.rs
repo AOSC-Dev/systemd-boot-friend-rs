@@ -53,7 +53,7 @@ fn detect_root_partition() -> Result<String> {
         let partition = parts.next().unwrap_or_default();
         let mount = parts.next().unwrap_or_default();
         if mount == "/" {
-            root_partition = partition.to_owned();
+            partition.clone_into(&mut root_partition);
         }
     }
 
@@ -130,7 +130,7 @@ impl Config {
                 }
 
                 for (_, bootarg) in config.bootargs.borrow_mut().iter_mut() {
-                    *bootarg = fill_necessary_bootarg(bootarg)?.trim().to_owned();
+                    fill_necessary_bootarg(bootarg)?.trim().clone_into(bootarg);
                 }
 
                 Ok(config)
