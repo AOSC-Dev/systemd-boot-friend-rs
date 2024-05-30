@@ -33,6 +33,9 @@ _sbf() {
             sbf,remove-kernel)
                 cmd="sbf__remove__kernel"
                 ;;
+            sbf,select)
+                cmd="sbf__select"
+                ;;
             sbf,set-default)
                 cmd="sbf__set__default"
                 ;;
@@ -63,6 +66,9 @@ _sbf() {
             sbf__help,remove-kernel)
                 cmd="sbf__help__remove__kernel"
                 ;;
+            sbf__help,select)
+                cmd="sbf__help__select"
+                ;;
             sbf__help,set-default)
                 cmd="sbf__help__set__default"
                 ;;
@@ -79,7 +85,7 @@ _sbf() {
 
     case "${cmd}" in
         sbf)
-            opts="-h -V --help --version init update install-kernel remove-kernel list-available list-installed config set-default set-timeout help"
+            opts="-h -V --help --version init update install-kernel remove-kernel select list-available list-installed config set-default set-timeout help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -107,7 +113,7 @@ _sbf() {
             return 0
             ;;
         sbf__help)
-            opts="init update install-kernel remove-kernel list-available list-installed config set-default set-timeout help"
+            opts="init update install-kernel remove-kernel select list-available list-installed config set-default set-timeout help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -205,6 +211,20 @@ _sbf() {
             return 0
             ;;
         sbf__help__remove__kernel)
+            opts=""
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        sbf__help__select)
             opts=""
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
@@ -318,6 +338,20 @@ _sbf() {
             ;;
         sbf__remove__kernel)
             opts="-h --help [TARGETS]..."
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+                return 0
+            fi
+            case "${prev}" in
+                *)
+                    COMPREPLY=()
+                    ;;
+            esac
+            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
+            return 0
+            ;;
+        sbf__select)
+            opts="-h --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0

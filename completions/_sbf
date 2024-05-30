@@ -56,6 +56,12 @@ _arguments "${_arguments_options[@]}" \
 '*::targets:' \
 && ret=0
 ;;
+(select)
+_arguments "${_arguments_options[@]}" \
+'-h[Print help]' \
+'--help[Print help]' \
+&& ret=0
+;;
 (list-available)
 _arguments "${_arguments_options[@]}" \
 '-h[Print help]' \
@@ -116,6 +122,10 @@ _arguments "${_arguments_options[@]}" \
 _arguments "${_arguments_options[@]}" \
 && ret=0
 ;;
+(select)
+_arguments "${_arguments_options[@]}" \
+&& ret=0
+;;
 (list-available)
 _arguments "${_arguments_options[@]}" \
 && ret=0
@@ -156,6 +166,7 @@ _sbf_commands() {
 'update:Install all kernels and update boot entries' \
 'install-kernel:Install the kernels specified' \
 'remove-kernel:Remove the kernels specified' \
+'select:Select kernels to install or remove' \
 'list-available:List all available kernels' \
 'list-installed:List all installed kernels' \
 'config:Configure systemd-boot' \
@@ -182,6 +193,7 @@ _sbf__help_commands() {
 'update:Install all kernels and update boot entries' \
 'install-kernel:Install the kernels specified' \
 'remove-kernel:Remove the kernels specified' \
+'select:Select kernels to install or remove' \
 'list-available:List all available kernels' \
 'list-installed:List all installed kernels' \
 'config:Configure systemd-boot' \
@@ -245,6 +257,16 @@ _sbf__help__remove-kernel_commands() {
 _sbf__remove-kernel_commands() {
     local commands; commands=()
     _describe -t commands 'sbf remove-kernel commands' commands "$@"
+}
+(( $+functions[_sbf__help__select_commands] )) ||
+_sbf__help__select_commands() {
+    local commands; commands=()
+    _describe -t commands 'sbf help select commands' commands "$@"
+}
+(( $+functions[_sbf__select_commands] )) ||
+_sbf__select_commands() {
+    local commands; commands=()
+    _describe -t commands 'sbf select commands' commands "$@"
 }
 (( $+functions[_sbf__help__set-default_commands] )) ||
 _sbf__help__set-default_commands() {
