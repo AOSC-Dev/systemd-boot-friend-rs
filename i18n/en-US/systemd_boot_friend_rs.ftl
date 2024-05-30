@@ -49,6 +49,7 @@ ask_overwrite = {$entry} already exists. Overwrite?
 ask_set_default = Set {$kernel} as the default boot entry?
 select_install = Kernel(s) to install as boot entry(s)
 select_remove = Kernel(s) to remove from the boot menu
+select = Kernel(s) to install or remove from the bootloader
 select_default = Default kernel to boot from
 ask_init = Proceed with installing and initializing systemd-boot?
 prompt_update =

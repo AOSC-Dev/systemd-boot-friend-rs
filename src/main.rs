@@ -149,6 +149,24 @@ fn main() -> Result<()> {
             )?
             .iter()
             .try_for_each(|k| k.remove())?,
+            SubCommands::Select => {
+                let new_kernels =
+                    &multiselect_kernel(&kernels, &installed_kernels, &fl!("select"))?;
+                installed_kernels.iter().try_for_each(|k| {
+                    if !new_kernels.contains(k) {
+                        k.remove()
+                    } else {
+                        Ok(())
+                    }
+                })?;
+                new_kernels.iter().try_for_each(|k| {
+                    if !installed_kernels.contains(k) {
+                        k.install_and_make_config(true)
+                    } else {
+                        Ok(())
+                    }
+                })?;
+            }
             SubCommands::ListAvailable => kernel_manager.list_available(),
             SubCommands::ListInstalled => kernel_manager.list_installed()?,
             SubCommands::SetDefault { target } => {

@@ -45,8 +45,9 @@ note_list_installed = "*" 表示預設核心
 
 ask_overwrite = {$entry} 已存在。是否覆寫該檔案？
 ask_set_default = 是否將 {$kernel} 設為預設開機選項？
-select_install =要登記開機選項的核心
+select_install = 要登記開機選項的核心
 select_remove = 要從開機選單移除的核心
+select_remove = 要在開機選單登記或移除的核心
 select_default = 預設核心
 ask_init = 是否安裝並初始化 systemd-boot？
 prompt_update =

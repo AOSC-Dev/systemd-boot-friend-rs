@@ -4,7 +4,11 @@ use dialoguer::{theme::ColorfulTheme, MultiSelect, Select};
 use libsdbootconf::SystemdBootConf;
 use std::{cell::RefCell, rc::Rc};
 
-pub fn multiselect_kernel<K: Kernel>(kernels: &[K], prompt: &str) -> Result<Vec<K>> {
+pub fn multiselect_kernel<K: Kernel>(
+    kernels: &[K],
+    installed_kernels: &[K],
+    prompt: &str,
+) -> Result<Vec<K>> {
     if kernels.is_empty() {
         bail!(fl!("empty_list"));
     }
@@ -13,6 +17,12 @@ pub fn multiselect_kernel<K: Kernel>(kernels: &[K], prompt: &str) -> Result<Vec<
     Ok(MultiSelect::with_theme(&ColorfulTheme::default())
         .with_prompt(prompt)
         .items(kernels)
+        .defaults(
+            &kernels
+                .iter()
+                .map(|k| installed_kernels.contains(k))
+                .collect::<Vec<bool>>(),
+        )
         .interact()?
         .iter()
         .map(|n| kernels[*n].clone())
@@ -42,7 +52,7 @@ pub fn specify_or_multiselect<K: Kernel>(
 ) -> Result<Vec<K>> {
     if arg.is_empty() {
         // select the kernels when no target is given
-        multiselect_kernel(kernels, prompt)
+        multiselect_kernel(kernels, &[], prompt)
     } else {
         let mut kernels = Vec::new();
 

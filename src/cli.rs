@@ -26,19 +26,22 @@ pub enum SubCommands {
     /// Remove the kernels specified
     #[command(display_order = 4)]
     RemoveKernel { targets: Vec<String> },
-    /// List all available kernels
+    /// Select kernels to install or remove
     #[command(display_order = 5)]
+    Select,
+    /// List all available kernels
+    #[command(display_order = 6)]
     ListAvailable,
     /// List all installed kernels
-    #[command(display_order = 6)]
+    #[command(display_order = 7)]
     ListInstalled,
     /// Configure systemd-boot
-    #[command(display_order = 7)]
+    #[command(display_order = 8)]
     Config,
     /// Set the default kernel
-    #[command(display_order = 8)]
+    #[command(display_order = 9)]
     SetDefault { target: Option<String> },
     /// Set the boot menu timeout
-    #[command(display_order = 9)]
+    #[command(display_order = 10)]
     SetTimeout { timeout: Option<u32> },
 }
