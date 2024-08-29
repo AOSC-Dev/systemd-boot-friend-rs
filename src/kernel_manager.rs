@@ -49,8 +49,10 @@ impl<'a, K: Kernel> KernelManager<'a, K> {
             .try_for_each(|k| k.install_and_make_config(true))?;
 
         // Set the newest kernel as default entry
-        if let Some(k) = self.kernels.first() {
-            k.set_default()?;
+        if keep > 0 {
+            if let Some(k) = self.kernels.first() {
+                k.set_default()?;
+            }
         }
 
         Ok(())
