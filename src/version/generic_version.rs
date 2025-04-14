@@ -3,8 +3,8 @@ use nom::{
     bytes::complete::{tag, take_until},
     character::complete::digit1,
     combinator::{map_res, opt},
-    sequence::{preceded, tuple},
-    IResult,
+    sequence::preceded,
+    IResult, Parser,
 };
 use std::fmt;
 
@@ -41,46 +41,47 @@ impl fmt::Display for GenericVersion {
 }
 
 fn version_digit(input: &str) -> IResult<&str, u64> {
-    map_res(digit1, |x: &str| x.parse())(input)
+    map_res(digit1, |x: &str| x.parse()).parse(input)
 }
 
 fn digit_after_dot(input: &str) -> IResult<&str, u64> {
-    preceded(tag("."), version_digit)(input)
+    preceded(tag("."), version_digit).parse(input)
 }
 
 fn rc(input: &str) -> IResult<&str, u64> {
-    preceded(tag("-rc"), version_digit)(input)
+    preceded(tag("-rc"), version_digit).parse(input)
 }
 
 fn rel(input: &str) -> IResult<&str, u64> {
-    map_res(preceded(tag("-"), take_until("-")), |x: &str| x.parse())(input)
+    map_res(preceded(tag("-"), take_until("-")), |x: &str| x.parse()).parse(input)
 }
 
 impl Version for GenericVersion {
     fn parse(input: &str) -> Result<Self> {
-        tuple((
+        (
             version_digit,        // Major
             digit_after_dot,      // Minor
             opt(digit_after_dot), // Optional Patch
             opt(rc),              // Optional RC
             opt(rel),             // Optional Rel
-        ))(input)
-        .map_or_else(
-            |_| Err(anyhow!(fl!("invalid_kernel_filename"))),
-            |(next, res)| {
-                let (major, minor, patch, rc, rel) = res;
-                let version = GenericVersion {
-                    major,
-                    minor,
-                    patch: patch.unwrap_or_default(),
-                    rc,
-                    rel,
-                    localversion: next.into(),
-                };
-
-                Ok(version)
-            },
         )
+            .parse(input)
+            .map_or_else(
+                |_| Err(anyhow!(fl!("invalid_kernel_filename"))),
+                |(next, res)| {
+                    let (major, minor, patch, rc, rel) = res;
+                    let version = GenericVersion {
+                        major,
+                        minor,
+                        patch: patch.unwrap_or_default(),
+                        rc,
+                        rel,
+                        localversion: next.into(),
+                    };
+
+                    Ok(version)
+                },
+            )
     }
 }
 
