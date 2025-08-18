@@ -46,14 +46,14 @@ _arguments "${_arguments_options[@]}" : \
 '--force[Force overwrite the entry config or not]' \
 '-h[Print help]' \
 '--help[Print help]' \
-'*::targets:' \
+'*::targets:_default' \
 && ret=0
 ;;
 (remove-kernel)
 _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
 '--help[Print help]' \
-'*::targets:' \
+'*::targets:_default' \
 && ret=0
 ;;
 (select)
@@ -84,14 +84,14 @@ _arguments "${_arguments_options[@]}" : \
 _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
 '--help[Print help]' \
-'::target:' \
+'::target:_default' \
 && ret=0
 ;;
 (set-timeout)
 _arguments "${_arguments_options[@]}" : \
 '-h[Print help]' \
 '--help[Print help]' \
-'::timeout:' \
+'::timeout:_default' \
 && ret=0
 ;;
 (help)
