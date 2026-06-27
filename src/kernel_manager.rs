@@ -2,8 +2,8 @@ use anyhow::Result;
 use console::style;
 
 use crate::{
-    fl, kernel::Kernel, print_block_with_fl, println_with_fl, println_with_prefix,
-    println_with_prefix_and_fl, Config,
+    Config, fl, kernel::Kernel, print_block_with_fl, println_with_fl, println_with_prefix,
+    println_with_prefix_and_fl,
 };
 
 /// Manage kernels
@@ -49,10 +49,10 @@ impl<'a, K: Kernel> KernelManager<'a, K> {
             .try_for_each(|k| k.install_and_make_config(true))?;
 
         // Set the newest kernel as default entry
-        if keep > 0 {
-            if let Some(k) = self.kernels.first() {
-                k.set_default()?;
-            }
+        if keep > 0
+            && let Some(k) = self.kernels.first()
+        {
+            k.set_default()?;
         }
 
         Ok(())

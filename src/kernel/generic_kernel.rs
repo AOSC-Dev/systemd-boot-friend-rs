@@ -1,17 +1,17 @@
-use anyhow::{anyhow, bail, Result};
-use dialoguer::{theme::ColorfulTheme, Confirm};
+use anyhow::{Result, anyhow, bail};
+use dialoguer::{Confirm, theme::ColorfulTheme};
 use libsdbootconf::{
-    entry::{EntryBuilder, Token},
     SystemdBootConf,
+    entry::{EntryBuilder, Token},
 };
 use regex::Regex;
 use std::{cell::RefCell, cmp::Ordering, collections::HashMap, fmt, fs, path::PathBuf, rc::Rc};
 
-use super::{file_copy, Kernel, REL_ENTRY_PATH};
+use super::{Kernel, REL_ENTRY_PATH, file_copy};
 use crate::{
-    fl, print_block_with_fl, println_with_prefix, println_with_prefix_and_fl,
-    version::{generic_version::GenericVersion, Version},
-    Config, REL_DEST_PATH, SRC_PATH,
+    Config, REL_DEST_PATH, SRC_PATH, fl, print_block_with_fl, println_with_prefix,
+    println_with_prefix_and_fl,
+    version::{Version, generic_version::GenericVersion},
 };
 
 const MODULES_PATH: &str = "/usr/lib/modules/";
@@ -270,10 +270,10 @@ impl Kernel for GenericKernel {
 
         if let Some(entry) = entry {
             for token in entry.tokens.iter() {
-                if let Token::Linux(p) = token {
-                    if *p == *PathBuf::from(REL_DEST_PATH).join(&self.vmlinux) {
-                        return Ok(true);
-                    }
+                if let Token::Linux(p) = token
+                    && *p == *PathBuf::from(REL_DEST_PATH).join(&self.vmlinux)
+                {
+                    return Ok(true);
                 }
             }
         }
