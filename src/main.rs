@@ -1,7 +1,7 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use clap::Parser;
 use core::default::Default;
-use dialoguer::{theme::ColorfulTheme, Confirm, Input};
+use dialoguer::{Confirm, Input, theme::ColorfulTheme};
 use libsdbootconf::SystemdBootConf;
 use std::{
     cell::RefCell,
@@ -22,7 +22,7 @@ mod version;
 use cli::{Opts, SubCommands};
 use config::Config;
 use i18n::I18N_LOADER;
-use kernel::{generic_kernel::GenericKernel, Kernel};
+use kernel::{Kernel, generic_kernel::GenericKernel};
 use kernel_manager::KernelManager;
 use util::*;
 
@@ -166,6 +166,14 @@ fn main() -> Result<()> {
                         Ok(())
                     }
                 })?;
+                specify_or_select(
+                    &GenericKernel::list_installed(&config, sbconf.clone())?,
+                    &config,
+                    &None,
+                    &fl!("select_default"),
+                    sbconf,
+                )?
+                .set_default()?;
             }
             SubCommands::ListAvailable => kernel_manager.list_available(),
             SubCommands::ListInstalled => kernel_manager.list_installed()?,
