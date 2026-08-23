@@ -43,15 +43,26 @@ fn init(config: &Config) -> Result<()> {
         return Ok(());
     }
 
-    let child_output = Command::new("bootctl")
-        .arg("install")
-        .arg(
-            "--esp=".to_owned()
-                + config
-                    .esp_mountpoint
+    let mut bootctl_args = vec![
+        "install".to_owned(),
+        "--esp=".to_owned()
+            + config
+                .esp_mountpoint
+                .to_str()
+                .ok_or_else(|| anyhow!(fl!("invalid_esp")))?,
+    ];
+
+    if let Some(xbootldr_mountpoint) = &config.xbootldr_mountpoint {
+        bootctl_args.push(
+            "--boot-path=".to_owned()
+                + xbootldr_mountpoint
                     .to_str()
-                    .ok_or_else(|| anyhow!(fl!("invalid_esp")))?,
-        )
+                    .ok_or_else(|| anyhow!(fl!("invalid_xbootldr")))?,
+        );
+    }
+
+    let child_output = Command::new("bootctl")
+        .args(bootctl_args)
         .stderr(Stdio::piped())
         .spawn()?
         .wait_with_output()?;

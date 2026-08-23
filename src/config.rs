@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, collections::HashMap, fs, path::PathBuf, rc::Rc};
 
@@ -18,6 +18,8 @@ pub struct Config {
     pub distro: Rc<String>,
     #[serde(alias = "ESP_MOUNTPOINT")]
     pub esp_mountpoint: Rc<PathBuf>,
+    #[serde(alias = "XBOOTLDR_MOUNTPOINT")]
+    pub xbootldr_mountpoint: Option<Rc<PathBuf>>,
     #[serde(alias = "KEEP")]
     pub keep: Option<usize>,
     #[serde(alias = "BOOTARG")]
@@ -33,6 +35,7 @@ impl Default for Config {
             initrd: "initramfs-{VERSION}.img".to_owned(),
             distro: Rc::new("Linux".to_owned()),
             esp_mountpoint: Rc::new(PathBuf::from("/efi")),
+            xbootldr_mountpoint: None,
             keep: None,
             bootarg: None,
             bootargs: Rc::new(RefCell::new(HashMap::from([(
@@ -129,7 +132,7 @@ impl Config {
                     config.write()?;
                 }
 
-                for (_, bootarg) in config.bootargs.borrow_mut().iter_mut() {
+                for bootarg in config.bootargs.borrow_mut().values_mut() {
                     fill_necessary_bootarg(bootarg)?.trim().clone_into(bootarg);
                 }
 

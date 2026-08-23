@@ -3,6 +3,7 @@ conf_old = 检测到旧的配置文件，正在更新...
 edit_conf = 在继续操作前，您可能需要修改 { $conf_path }。
 empty_list = 内核列表为空
 invalid_esp = ESP_MOUNTPOINT 不正确
+invalid_xbootldr = XBOOTLDR_MOUNTPOINT 不正确
 invalid_index = 内核序号不正确
 no_kernel = 找不到内核
 invalid_kernel_filename = 内核文件名不正确
