@@ -467,11 +467,11 @@ checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
 name = "libsdbootconf"
-version = "0.11.2"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23446cb4321101ac3540037acfcf321e74d913eec7895e436587a684a4ce6c55"
+checksum = "205326638ebe2ad58fe9e48c231c533f4ae43cd0437c2483ea47769a19c7c1ba"
 dependencies = [
- "thiserror 1.0.69",
+ "thiserror 2.0.20",
 ]
 
 [[package]]

@@ -43,15 +43,26 @@ fn init(config: &Config) -> Result<()> {
         return Ok(());
     }
 
-    let child_output = Command::new("bootctl")
-        .arg("install")
-        .arg(
-            "--esp=".to_owned()
-                + config
-                    .esp_mountpoint
+    let mut bootctl_args = vec![
+        "install".to_owned(),
+        "--esp=".to_owned()
+            + config
+                .esp_mountpoint
+                .to_str()
+                .ok_or_else(|| anyhow!(fl!("invalid_esp")))?,
+    ];
+
+    if let Some(xbootldr_mountpoint) = &config.xbootldr_mountpoint {
+        bootctl_args.push(
+            "--boot-path=".to_owned()
+                + xbootldr_mountpoint
                     .to_str()
-                    .ok_or_else(|| anyhow!(fl!("invalid_esp")))?,
-        )
+                    .ok_or_else(|| anyhow!(fl!("invalid_xbootldr")))?,
+        );
+    }
+
+    let child_output = Command::new("bootctl")
+        .args(bootctl_args)
         .stderr(Stdio::piped())
         .spawn()?
         .wait_with_output()?;
@@ -60,8 +71,14 @@ fn init(config: &Config) -> Result<()> {
         bail!(String::from_utf8(child_output.stderr)?);
     }
 
+    let dest_mountpoint = config
+        .xbootldr_mountpoint
+        .as_ref()
+        .unwrap_or(&config.esp_mountpoint);
+
     let sbconf = Rc::new(RefCell::new(SystemdBootConf::new(
-        config.esp_mountpoint.join("loader/"),
+        dest_mountpoint.join("loader/"),
+        (&config.esp_mountpoint).to_path_buf(),
         libsdbootconf::Config::default(),
         Vec::new(),
     )));
@@ -77,7 +94,8 @@ fn init(config: &Config) -> Result<()> {
 
     // create folder structure
     println_with_prefix_and_fl!("create_folder");
-    fs::create_dir_all(config.esp_mountpoint.join(REL_DEST_PATH))?;
+
+    fs::create_dir_all(dest_mountpoint.join(REL_DEST_PATH))?;
 
     // Update systemd-boot kernels and entries
     print_block_with_fl!("prompt_update", src_path = SRC_PATH);
@@ -121,9 +139,17 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
+    let dest_mountpoint = config
+        .xbootldr_mountpoint
+        .as_ref()
+        .unwrap_or(&config.esp_mountpoint);
+
     let sbconf = Rc::new(RefCell::new(
-        SystemdBootConf::load(config.esp_mountpoint.join("loader/"))
-            .map_err(|_| anyhow!(fl!("info_path_not_exist")))?,
+        SystemdBootConf::load(
+            dest_mountpoint.join("loader/"),
+            (&config.esp_mountpoint).to_path_buf(),
+        )
+        .map_err(|_| anyhow!(fl!("info_path_not_exist")))?,
     ));
     let installed_kernels = GenericKernel::list_installed(&config, sbconf.clone())?;
     let kernels = GenericKernel::list(&config, sbconf.clone())?;

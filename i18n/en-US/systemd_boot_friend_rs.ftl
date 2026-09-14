@@ -3,6 +3,7 @@ conf_old = Old configuration detected, updating ...
 edit_conf = You may need to edit { $conf_path } before continuing.
 empty_list = Empty kernel list
 invalid_esp = Invalid ESP_MOUNTPOINT
+invalid_xbootldr = Invalid XBOOTLDR_MOUNTPOINT
 invalid_index = Invalid kernel index
 no_kernel = No kernel found
 invalid_kernel_filename = Invalid kernel filename

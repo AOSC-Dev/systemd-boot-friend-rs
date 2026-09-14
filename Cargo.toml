@@ -26,7 +26,7 @@ dialoguer = "0.12"
 lazy_static = "1.4"
 regex = "1.5"
 nom = "8.0"
-libsdbootconf = "0.11"
+libsdbootconf = "0.12"
 same-file = "1"
 # i18n
 i18n-embed = { version = "0.16", features = ["fluent-system", "desktop-requester"]}

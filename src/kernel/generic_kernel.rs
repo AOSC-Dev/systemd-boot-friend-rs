@@ -25,6 +25,7 @@ pub struct GenericKernel {
     initrd: String,
     distro: Rc<String>,
     esp_mountpoint: Rc<PathBuf>,
+    xbootldr_mountpoint: Option<Rc<PathBuf>>,
     entry: String,
     bootargs: Rc<RefCell<HashMap<String, String>>>,
     sbconf: Rc<RefCell<SystemdBootConf>>,
@@ -82,6 +83,7 @@ impl Kernel for GenericKernel {
             initrd,
             distro: config.distro.clone(),
             esp_mountpoint: config.esp_mountpoint.clone(),
+            xbootldr_mountpoint: config.xbootldr_mountpoint.clone(),
             entry,
             bootargs: config.bootargs.clone(),
             sbconf,
@@ -91,7 +93,11 @@ impl Kernel for GenericKernel {
     /// Install a specific kernel to the esp using the given kernel filename
     fn install(&self) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend
-        let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
+        let dest_mountpoint = self
+            .xbootldr_mountpoint
+            .as_ref()
+            .unwrap_or(&self.esp_mountpoint);
+        let dest_path = dest_mountpoint.join(REL_DEST_PATH);
         let src_path = PathBuf::from(SRC_PATH);
 
         if !dest_path.exists() {
@@ -131,7 +137,11 @@ impl Kernel for GenericKernel {
 
     // Try to remove a kernel
     fn remove(&self) -> Result<()> {
-        let kernel_path = self.esp_mountpoint.join(REL_DEST_PATH);
+        let kernel_mountpoint = self
+            .xbootldr_mountpoint
+            .as_ref()
+            .unwrap_or(&self.esp_mountpoint);
+        let kernel_path = kernel_mountpoint.join(REL_DEST_PATH);
 
         println_with_prefix_and_fl!("remove_kernel", kernel = self.to_string());
         let vmlinux = kernel_path.join(&self.vmlinux);
@@ -165,7 +175,11 @@ impl Kernel for GenericKernel {
     /// Create a systemd-boot entry config
     fn make_config(&self, force_write: bool) -> Result<()> {
         // if the path does not exist, ask the user for initializing friend
-        let entries_path = self.esp_mountpoint.join(REL_ENTRY_PATH);
+        let dest_mountpoint = self
+            .xbootldr_mountpoint
+            .as_ref()
+            .unwrap_or(&self.esp_mountpoint);
+        let entries_path = dest_mountpoint.join(REL_ENTRY_PATH);
 
         if !entries_path.exists() {
             print_block_with_fl!("info_path_not_exist");
@@ -197,7 +211,7 @@ impl Kernel for GenericKernel {
         // Generate entry config
         println_with_prefix_and_fl!("create_entry", kernel = self.to_string());
 
-        let dest_path = self.esp_mountpoint.join(REL_DEST_PATH);
+        let dest_path = dest_mountpoint.join(REL_DEST_PATH);
         let rel_dest_path = PathBuf::from(REL_DEST_PATH);
         let mut entries = Vec::new();
 
@@ -331,7 +345,11 @@ impl Kernel for GenericKernel {
         let re = Regex::new(&config.vmlinux.replace("{VERSION}", r"(?P<version>.+)"))?;
 
         // Regex match group
-        if let Ok(d) = fs::read_dir(config.esp_mountpoint.join(REL_DEST_PATH)) {
+        let kernel_mountpoint = config
+            .xbootldr_mountpoint
+            .as_ref()
+            .unwrap_or(&config.esp_mountpoint);
+        if let Ok(d) = fs::read_dir(kernel_mountpoint.join(REL_DEST_PATH)) {
             for x in d {
                 let filename = &x?
                     .file_name()

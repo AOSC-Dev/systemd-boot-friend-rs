@@ -3,6 +3,7 @@ conf_old = 偵測到舊的設定檔，正在更新...
 edit_conf = 在繼續操作前，您可能需要修改 { $conf_path }。
 empty_list = 核心列表為空
 invalid_esp = ESP_MOUNTPOINT 不正確
+invalid_xbootldr = XBOOTLDR_MOUNTPOINT 不正確
 invalid_index = 核心編號不正確
 no_kernel = 找不到核心
 invalid_kernel_filename = 核心檔案名稱不正確
